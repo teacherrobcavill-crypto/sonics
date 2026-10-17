@@ -488,16 +488,16 @@ export const ACADEMIC_RANKS: RankInfo[] = [
     title: "Certified Studio Engineer",
     minScore: 5600000,
     year: 1,
-    approxTimeline: "Year 1 • May (Year 1 Graduation)",
-    description: "Year One Completed! Proven critical listening and studio analytical accuracy."
+    approxTimeline: "Stage 1 Certification",
+    description: "Foundational Stage Completed! Proven critical listening and studio analytical accuracy."
   },
   {
     tier: 16,
     title: "Frequency Adept",
     minScore: 6200000,
     year: 2,
-    approxTimeline: "Year 2 • July (Year 2 Begins)",
-    description: "Year Two advanced training: discerning complex multi-instrument EQ interactions."
+    approxTimeline: "Stage 2 Mastery",
+    description: "Advanced audio training: discerning complex multi-instrument EQ interactions."
   },
   {
     tier: 17,
@@ -560,8 +560,8 @@ export const ACADEMIC_RANKS: RankInfo[] = [
     title: "Legendary Golden Ears",
     minScore: 10000000,
     year: 2,
-    approxTimeline: "Year 2 • May (End of Year 2 Grand Finale!)",
-    description: "The Pinnacle of Ear Training: The highest honor awarded at the completion of Year Two!"
+    approxTimeline: "Pinnacle Honor",
+    description: "The Pinnacle of Ear Training: The highest studio honor awarded across all 24 ranks!"
   }
 ];
 

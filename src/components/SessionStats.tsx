@@ -81,15 +81,15 @@ export const SessionStats: React.FC<SessionStatsProps> = ({
 
       </div>
 
-      {/* 2-Year Rank Ladder Progress Card */}
+      {/* Rank Ladder Progress Card */}
       <div className="bg-gradient-to-r from-studio-900 via-studio-900 to-studio-950 border border-studio-800 p-5 rounded-2xl shadow-xl space-y-3 font-mono">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center space-x-2.5">
             <span className="px-2.5 py-1 text-xs font-bold uppercase rounded-lg border bg-amber-500/20 text-amber-300 border-amber-500/30">
-              Tier {rankDetails.currentRank.tier} / 24 &bull; Year {rankDetails.currentRank.year}
+              Tier {rankDetails.currentRank.tier} / 24
             </span>
-            <span className="text-xs text-slate-400">
-              {rankDetails.currentRank.approxTimeline}
+            <span className="text-xs text-slate-400 font-mono">
+              {rankDetails.currentRank.minScore.toLocaleString()} pts
             </span>
           </div>
 

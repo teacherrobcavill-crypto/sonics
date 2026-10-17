@@ -38,7 +38,7 @@ export const RankLadderModal: React.FC<RankLadderModalProps> = ({
             </div>
             <div className="min-w-0">
               <h2 className="text-sm sm:text-xl font-bold text-white flex items-center gap-1.5 truncate">
-                {isMobile ? '2-Year Rank Ladder' : '2-Year Audio Engineering Rank Ladder'}
+                {isMobile ? 'Rank Ladder' : 'Audio Engineering Rank Ladder'}
               </h2>
               <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 line-clamp-1 sm:line-clamp-none">
                 Progressive Skill Ladder (24 Ranks) &bull; Calibrated for 20 daily practice rounds
@@ -77,7 +77,7 @@ export const RankLadderModal: React.FC<RankLadderModalProps> = ({
           )}
         </div>
 
-        {/* Year Selector Tabs */}
+        {/* Tier Group Tabs */}
         <div className="flex border-b border-studio-800 bg-studio-950/60 p-1.5 sm:p-2 gap-1.5 sm:gap-2 text-xs font-mono">
           <button
             onClick={() => setActiveYear(1)}
@@ -88,7 +88,7 @@ export const RankLadderModal: React.FC<RankLadderModalProps> = ({
             }`}
           >
             <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span>{isMobile ? 'Year 1: Foundations' : 'YEAR 1: Foundations & Studio Tracking (July – May)'}</span>
+            <span>{isMobile ? 'Tiers 1–15' : 'PART 1: Foundations & Tracking (Tiers 1–15)'}</span>
           </button>
           <button
             onClick={() => setActiveYear(2)}
@@ -99,7 +99,7 @@ export const RankLadderModal: React.FC<RankLadderModalProps> = ({
             }`}
           >
             <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span>{isMobile ? 'Year 2: Adv. Mixing' : 'YEAR 2: Advanced Mixing & Mastering (July – May)'}</span>
+            <span>{isMobile ? 'Tiers 16–24' : 'PART 2: Advanced Mixing & Mastering (Tiers 16–24)'}</span>
           </button>
         </div>
 
@@ -108,10 +108,10 @@ export const RankLadderModal: React.FC<RankLadderModalProps> = ({
           <div className="text-[10px] sm:text-xs text-slate-400 mb-1 sm:mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
             <span>
               {activeYear === 1
-                ? 'Year 1 spans Month 1 (July) to Month 11 (May) &bull; Tiers 1 to 15'
-                : 'Year 2 spans Month 12 (July) to Month 22 (May) &bull; Tiers 16 to 24 (Pinnacle)'}
+                ? 'Part 1: Tiers 1 to 15 (0 to 5,600,000 pts)'
+                : 'Part 2: Tiers 16 to 24 (6,200,000 to 10,000,000 pts Pinnacle)'}
             </span>
-            <span className="text-slate-500">Scale: 20 rounds/day @ ~750 avg pts</span>
+            <span className="text-slate-500">24 progressive ranks</span>
           </div>
 
           {displayedRanks.map((rank) => {
@@ -169,12 +169,9 @@ export const RankLadderModal: React.FC<RankLadderModalProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-studio-800/80 flex-shrink-0">
-                  <div className="text-xs font-bold text-slate-200">
-                    {rank.minScore.toLocaleString()} <span className="text-[10px] text-slate-500 font-normal">pts</span>
-                  </div>
-                  <div className="text-[11px] text-studio-accent font-semibold sm:mt-0.5">
-                    {rank.approxTimeline}
+                <div className="flex items-center justify-end sm:flex-col sm:items-end sm:justify-center border-t sm:border-t-0 pt-2 sm:pt-0 border-studio-800/80 flex-shrink-0">
+                  <div className="text-xs sm:text-sm font-bold font-mono text-emerald-400">
+                    {rank.minScore.toLocaleString()} <span className="text-[10px] text-slate-400 font-normal">pts</span>
                   </div>
                 </div>
               </div>
