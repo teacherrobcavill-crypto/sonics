@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { X, Award, CheckCircle2, ChevronRight, Sparkles, Calendar, BookOpen, Star } from 'lucide-react';
-import { ACADEMIC_RANKS, RankInfo, getRankDetails } from '../utils/frequencies';
+import React from 'react';
+import { X, Award, BookOpen, Star } from 'lucide-react';
+import { ACADEMIC_RANKS, getRankDetails } from '../utils/frequencies';
 
 interface RankLadderModalProps {
   isOpen: boolean;
@@ -15,16 +15,10 @@ export const RankLadderModal: React.FC<RankLadderModalProps> = ({
   userScore,
   isMobile = false
 }) => {
-  const [activeYear, setActiveYear] = useState<1 | 2>(1);
-
   if (!isOpen) return null;
 
   const rankDetails = getRankDetails(userScore);
   const currentTier = rankDetails.currentRank.tier;
-
-  const year1Ranks = ACADEMIC_RANKS.filter(r => r.year === 1);
-  const year2Ranks = ACADEMIC_RANKS.filter(r => r.year === 2);
-  const displayedRanks = activeYear === 1 ? year1Ranks : year2Ranks;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-studio-950/80 backdrop-blur-md animate-fadeIn">
@@ -53,7 +47,7 @@ export const RankLadderModal: React.FC<RankLadderModalProps> = ({
           </button>
         </div>
 
-        {/* Current Student Standing Strip */}
+        {/* Current Standing Strip */}
         <div className={`bg-gradient-to-r from-studio-950 via-studio-900 to-studio-950 px-3.5 py-2.5 sm:px-6 sm:py-3.5 border-b border-studio-800 flex ${isMobile ? 'flex-col gap-1.5' : 'flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3'} text-xs font-mono`}>
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-slate-400">Current Standing:</span>
@@ -77,44 +71,14 @@ export const RankLadderModal: React.FC<RankLadderModalProps> = ({
           )}
         </div>
 
-        {/* Tier Group Tabs */}
-        <div className="flex border-b border-studio-800 bg-studio-950/60 p-1.5 sm:p-2 gap-1.5 sm:gap-2 text-xs font-mono">
-          <button
-            onClick={() => setActiveYear(1)}
-            className={`flex-1 py-2 sm:py-2.5 px-2.5 sm:px-4 rounded-xl font-bold transition-all flex items-center justify-center space-x-1.5 sm:space-x-2 cursor-pointer ${
-              activeYear === 1
-                ? 'bg-studio-accent text-studio-950 shadow-lg shadow-studio-accent/20'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-studio-900'
-            }`}
-          >
-            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span>{isMobile ? 'Tiers 1–15' : 'PART 1: Foundations & Tracking (Tiers 1–15)'}</span>
-          </button>
-          <button
-            onClick={() => setActiveYear(2)}
-            className={`flex-1 py-2 sm:py-2.5 px-2.5 sm:px-4 rounded-xl font-bold transition-all flex items-center justify-center space-x-1.5 sm:space-x-2 cursor-pointer ${
-              activeYear === 2
-                ? 'bg-studio-neonGreen text-studio-950 shadow-lg shadow-studio-neonGreen/20'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-studio-900'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span>{isMobile ? 'Tiers 16–24' : 'PART 2: Advanced Mixing & Mastering (Tiers 16–24)'}</span>
-          </button>
-        </div>
-
         {/* Ranks List */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-2.5 sm:space-y-3 font-mono">
           <div className="text-[10px] sm:text-xs text-slate-400 mb-1 sm:mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-            <span>
-              {activeYear === 1
-                ? 'Part 1: Tiers 1 to 15 (0 to 5,600,000 pts)'
-                : 'Part 2: Tiers 16 to 24 (6,200,000 to 10,000,000 pts Pinnacle)'}
-            </span>
-            <span className="text-slate-500">24 progressive ranks</span>
+            <span>All 24 Progressive Ranks (0 to 10,000,000 pts)</span>
+            <span className="text-slate-500">Pinnacle: Legendary Golden Ears</span>
           </div>
 
-          {displayedRanks.map((rank) => {
+          {ACADEMIC_RANKS.map((rank) => {
             const isCurrent = rank.tier === currentTier;
             const isUnlocked = userScore >= rank.minScore;
             const isPinnacle = rank.tier === 24;
