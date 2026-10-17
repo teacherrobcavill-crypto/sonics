@@ -1,10 +1,10 @@
-# Sonics 🎛️
+# Sonics
 
 An audio frequency and EQ ear-training web application. Built with **Web Audio API**, **React**, **TypeScript**, and **Tailwind CSS**.
 
 ---
 
-## 🎧 Features & Training Modes
+## Features & Training Modes
 
 ### 1. **Peak Master (Parametric EQ)**
 - **Parametric Bell Filter** boost or cut at mystery frequencies.
@@ -35,14 +35,7 @@ An audio frequency and EQ ear-training web application. Built with **Web Audio A
 
 ---
 
-## 🎵 Built-In Audio Sources & Custom File Loader
-
-- **Pink Noise**: -3dB/octave slope (equal energy per octave), the gold standard for acoustic measurement and ear training.
-- **White Noise**: High-frequency emphasis for hearing subtle top-end changes.
-- **Procedural Drum Loop (116 BPM)**: Punchy kick (45 Hz), snappy snare (190 Hz + noise), and crisp 16th-note hi-hats.
-- **Synth Chords**: Harmonic overtones across 100 Hz to 10 kHz.
-- **Full Funk Mix**: Drums, bassline, and synth keyboard groove.
-- **Custom Audio Loader**: Drag and drop any MP3, WAV, FLAC, or OGG file from your computer to train with your own reference mixes.
+## Built-In Audio Sources & Custom File Loader
 
 ---
 
@@ -57,7 +50,7 @@ An audio frequency and EQ ear-training web application. Built with **Web Audio A
 
 ---
 
-## 🚀 Running the App
+## Running the App
 
 ```bash
 # Start Vite development server
