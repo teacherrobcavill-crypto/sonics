@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================================
+   STUDIO AUDIO HARDWARE THEMES
+   ========================================================================= */
+
+/* Theme 1: Cyber Studio (Default) - Electric Cyan & Deep Obsidian */
+:root, [data-theme="cyber"] {
+  --color-studio-950: 10 13 20;     /* #0a0d14 */
+  --color-studio-900: 15 20 32;     /* #0f1420 */
+  --color-studio-850: 20 27 45;     /* #141b2d */
+  --color-studio-800: 26 35 58;     /* #1a233a */
+  --color-studio-700: 38 52 84;     /* #263454 */
+  --color-studio-600: 56 75 117;    /* #384b75 */
+  --color-studio-accent: 0 240 255; /* #00f0ff */
+  --color-studio-neonBlue: 0 212 255;
+  --color-studio-neonGreen: 0 255 136;
+  --color-studio-neonOrange: 255 136 0;
+  --color-studio-neonPink: 255 0 119;
+  --color-studio-amber: 255 183 3;
+}
+
+/* Theme 2: Neve Vintage / Warm Console - Warm British Analogue & Amber Gold */
+[data-theme="warm_console"] {
+  --color-studio-950: 18 15 13;     /* #120f0d warm dark wood/charcoal */
+  --color-studio-900: 28 23 20;     /* #1c1714 */
+  --color-studio-850: 38 32 27;     /* #26201b */
+  --color-studio-800: 51 43 37;     /* #332b25 */
+  --color-studio-700: 74 62 53;     /* #4a3e35 */
+  --color-studio-600: 102 85 74;    /* #66554a */
+  --color-studio-accent: 245 158 11; /* #f59e0b vintage Neve amber gold */
+  --color-studio-neonBlue: 251 191 36;
+  --color-studio-neonGreen: 132 204 22;
+  --color-studio-neonOrange: 234 88 12;
+  --color-studio-neonPink: 225 29 72;
+  --color-studio-amber: 245 158 11;
+}
+
+/* Theme 3: Abbey Road Tape Echo - Analogue Meter Emerald & Deep Forest */
+[data-theme="midnight_tape"] {
+  --color-studio-950: 6 16 13;      /* #06100d deep vintage tape green */
+  --color-studio-900: 10 26 21;     /* #0a1a15 */
+  --color-studio-850: 15 37 30;     /* #0f251e */
+  --color-studio-800: 20 51 41;     /* #143329 */
+  --color-studio-700: 30 74 60;     /* #1e4a3c */
+  --color-studio-600: 43 99 80;     /* #2b6350 */
+  --color-studio-accent: 16 185 129; /* #10b981 tape meter emerald */
+  --color-studio-neonBlue: 52 211 153;
+  --color-studio-neonGreen: 5 150 105;
+  --color-studio-neonOrange: 245 158 11;
+  --color-studio-neonPink: 244 63 94;
+  --color-studio-amber: 251 191 36;
+}
+
+/* Theme 4: Tokyo Synthwave - Neon 80s Hardware Synth & Fuchsia */
+[data-theme="synthwave"] {
+  --color-studio-950: 15 10 23;     /* #0f0a17 midnight violet */
+  --color-studio-900: 23 15 36;     /* #170f24 */
+  --color-studio-850: 33 22 51;     /* #211633 */
+  --color-studio-800: 45 30 69;     /* #2d1e45 */
+  --color-studio-700: 65 44 99;     /* #412c63 */
+  --color-studio-600: 89 60 133;    /* #593c85 */
+  --color-studio-accent: 244 63 94; /* #f43f5e hot neon rose */
+  --color-studio-neonBlue: 236 72 153;
+  --color-studio-neonGreen: 168 85 247;
+  --color-studio-neonOrange: 251 113 133;
+  --color-studio-neonPink: 244 63 94;
+  --color-studio-amber: 245 158 11;
+}
+
+/* Theme 5: SSL 4000-E - Oxford Solid State & Cobalt Blue */
+[data-theme="slate_minimal"] {
+  --color-studio-950: 11 15 23;     /* #0b0f17 dark gunmetal */
+  --color-studio-900: 17 24 39;     /* #111827 */
+  --color-studio-850: 30 41 59;     /* #1e293b */
+  --color-studio-800: 51 65 85;     /* #334155 */
+  --color-studio-700: 71 85 105;    /* #475569 */
+  --color-studio-600: 100 116 139;  /* #64748b */
+  --color-studio-accent: 56 189 248; /* #38bdf8 Oxford SSL cyan-blue */
+  --color-studio-neonBlue: 96 165 250;
+  --color-studio-neonGreen: 52 211 153;
+  --color-studio-neonOrange: 251 146 60;
+  --color-studio-neonPink: 244 63 94;
+  --color-studio-amber: 251 191 36;
+}
+
+@layer base {
+  body {
+    margin: 0;
+    padding: 0;
+    background-color: rgb(var(--color-studio-950));
+    color: #f1f5f9;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+}
+
+/* Custom slick dark audio gear scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgb(var(--color-studio-900));
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-studio-700));
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--color-studio-600));
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
