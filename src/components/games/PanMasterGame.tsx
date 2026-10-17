@@ -58,16 +58,16 @@ function getRoundPanTolerance(round: number): number {
 
 /**
  * Returns the maximum score for a spot-on guess in Pan Master for a given round.
- * Rounds 1–10: 500 points max.
- * Rounds 11–18: Scales up linearly from 500 to 1,000.
- * Rounds 19 & 20: 1,000 points max awarded for spot-on guesses in the final 2 rounds.
+ * Rounds 1–10: 400 points max (scaled back 20% from 500).
+ * Rounds 11–18: Scales up linearly from 400 to 800.
+ * Rounds 19 & 20: 800 points max awarded for spot-on guesses in the final 2 rounds (scaled back 20% from 1,000).
  */
 function getPanMasterMaxScore(round: number): number {
   const r = Math.max(1, Math.min(20, round));
-  if (r <= 10) return 500;
-  if (r >= 19) return 1000;
+  if (r <= 10) return 400;
+  if (r >= 19) return 800;
   const progress = (r - 10) / 9.0;
-  return Math.round(500 + progress * 500);
+  return Math.round(400 + progress * 400);
 }
 
 /**
@@ -333,8 +333,8 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
           colors: ['#ef4444', '#f43f5e', '#fb7185', '#ffffff']
         });
       } else {
-        setSessionScore(prev => prev + 100);
-        onBonusPoints?.(100);
+        setSessionScore(prev => prev + 80);
+        onBonusPoints?.(80);
         setRound10Milestone('bonus_points');
         confetti({
           particleCount: 80,
@@ -633,7 +633,7 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
           <p className="text-xs text-slate-400 mt-1 leading-relaxed">
             {isMobile
               ? 'Compare [B] Target Pan vs [A] Center • Tap soundstage to aim!'
-              : 'Audition [B] Target Pan vs [A] Center • Click where the sound is placed • Scoring scales from 500 up to 1,000 PTS as tolerance tightens!'}
+              : 'Audition [B] Target Pan vs [A] Center • Click where the sound is placed • Scoring scales from 400 up to 800 PTS as tolerance tightens!'}
           </p>
         </div>
 
@@ -1048,7 +1048,7 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
 
               <div className="relative flex items-baseline space-x-2 my-1">
                 <span className="text-5xl sm:text-6xl font-black font-mono tracking-tight text-amber-300 drop-shadow-[0_0_20px_rgba(251,191,36,0.6)]">
-                  +100
+                  +80
                 </span>
                 <span className="text-xl sm:text-2xl font-mono font-bold text-amber-100">
                   BONUS PTS
