@@ -1,6 +1,6 @@
-# SonicEQ Trainer 🎛️
+# Sonics 🎛️
 
-A professional audio frequency and EQ ear-training web application. Built with **Web Audio API**, **React**, **TypeScript**, and **Tailwind CSS**.
+An audio frequency and EQ ear-training web application. Built with **Web Audio API**, **React**, **TypeScript**, and **Tailwind CSS**.
 
 ---
 
