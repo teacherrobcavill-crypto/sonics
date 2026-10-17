@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import {
   Activity,
@@ -27,7 +27,8 @@ import {
   formatGain,
   freqDistanceInOctaves,
   freqDistanceInSemitones,
-  getWeightedPeakMasterFrequency
+  getWeightedPeakMasterFrequency,
+  getNextStratifiedTargetFrequency
 } from '../../utils/frequencies';
 
 interface PeakMasterGameProps {
@@ -143,10 +144,26 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
   const toleranceLowFreq = Math.max(20, Math.round(activeFreq * Math.pow(2, -currentToleranceOctaves)));
   const toleranceHighFreq = Math.min(20000, Math.round(activeFreq * Math.pow(2, currentToleranceOctaves)));
 
+  const targetHistoryRef = useRef<number[]>([]);
+
   // Generate new random target round
-  const generateNewRound = useCallback(() => {
-    const candidateBands = ISO_OCTAVE_THIRD;
-    const randomFreq = getWeightedPeakMasterFrequency(candidateBands);
+  const generateNewRound = useCallback((targetRoundNumber?: number) => {
+    const currentRound = typeof targetRoundNumber === 'number' ? targetRoundNumber : roundCount;
+    const recentFreqs = targetHistoryRef.current;
+    const previousFreq = recentFreqs.length > 0 ? recentFreqs[recentFreqs.length - 1] : null;
+
+    // Stratified frequency generation: strictly 50 Hz to 15,000 Hz, jumping across 4 spectrum zones
+    const randomFreq = getNextStratifiedTargetFrequency({
+      roundNumber: currentRound,
+      previousFreq,
+      recentFreqs,
+      filterType: 'peaking',
+      minFreq: 50,
+      maxFreq: 15000
+    });
+
+    targetHistoryRef.current = [...recentFreqs.slice(-8), randomFreq];
+
     const isCut = includeCuts && Math.random() > 0.5;
     const gain = isCut ? -fixedGain : fixedGain;
 
@@ -166,12 +183,12 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
     setLastRoundResult(null);
     setLastHitStatus(null);
     setStartTime(Date.now());
-  }, [includeCuts, fixedGain, qFactor]);
+  }, [roundCount, includeCuts, fixedGain, qFactor]);
 
   // Initial load
   useEffect(() => {
-    generateNewRound();
-  }, [generateNewRound]);
+    generateNewRound(1);
+  }, []);
 
   // Auto-dismiss Round 10 milestone graphic after 3.2 seconds
   useEffect(() => {
@@ -324,18 +341,19 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
       }
     }
 
-    generateNewRound();
+    generateNewRound(nextRound);
   };
 
   // Restart Peak Master session (if in custom audio or after reset)
   const handleRestartSession = () => {
+    targetHistoryRef.current = [];
     setRoundCount(1);
     setLives(3);
     setIsGameOver(false);
     setIsVictory(false);
     setSessionScore(0);
     setRound10Milestone(null);
-    generateNewRound();
+    generateNewRound(1);
   };
 
   // Constructed tolerance band for SpectrumDisplay

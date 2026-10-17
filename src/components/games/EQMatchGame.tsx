@@ -15,6 +15,7 @@ import {
   getWeightedPeakMasterFrequency,
   getWeightedLowShelfFrequency,
   getWeightedHighShelfFrequency,
+  getNextStratifiedTargetFrequency,
   MIN_FREQ,
   MAX_FREQ
 } from '../../utils/frequencies';
@@ -68,9 +69,11 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
   const [lastRoundResult, setLastRoundResult] = useState<RoundResult | null>(null);
   const [roundCount, setRoundCount] = useState(1);
   const [startTime, setStartTime] = useState<number>(Date.now());
+  const targetHistoryRef = useRef<number[]>([]);
 
   // Generate new challenge (80% parametric bell, 10% low shelf, 10% high shelf)
-  const generateNewRound = useCallback(() => {
+  const generateNewRound = useCallback((targetRoundNumber?: number) => {
+    const currentRound = typeof targetRoundNumber === 'number' ? targetRoundNumber : roundCount;
     let nextType: FilterType;
 
     // Skewed: 80% parametric (peaking), 10% low shelf, 10% high shelf
@@ -85,18 +88,20 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
 
     setFilterType(nextType);
 
-    let randomFreq: number;
-    if (nextType === 'lowshelf') {
-      // Strictly 50 Hz to 1000 Hz (no sub 50Hz options)
-      randomFreq = getWeightedLowShelfFrequency(50, 1000);
-    } else if (nextType === 'highshelf') {
-      // Strictly 1000 Hz to 15000 Hz (no above 15kHz options)
-      randomFreq = getWeightedHighShelfFrequency(1000, 15000);
-    } else {
-      // Parametric: strictly 50 Hz to 15000 Hz
-      const candidates = ISO_OCTAVE_THIRD.filter(f => f >= 50 && f <= 15000);
-      randomFreq = getWeightedPeakMasterFrequency(candidates);
-    }
+    const recentFreqs = targetHistoryRef.current;
+    const previousFreq = recentFreqs.length > 0 ? recentFreqs[recentFreqs.length - 1] : null;
+
+    // Stratified frequency generation: strictly 50 Hz to 15,000 Hz, jumping across 4 spectrum zones
+    const randomFreq = getNextStratifiedTargetFrequency({
+      roundNumber: currentRound,
+      previousFreq,
+      recentFreqs,
+      filterType: nextType,
+      minFreq: nextType === 'lowshelf' ? 50 : nextType === 'highshelf' ? 1000 : 50,
+      maxFreq: nextType === 'lowshelf' ? 1000 : 15000
+    });
+
+    targetHistoryRef.current = [...recentFreqs.slice(-8), randomFreq];
     
     // Pick gain between +/- 6 and +/- 12 dB (strictly capped at 12 dB)
     const gainMagnitudes = [6, 9, 12];
@@ -135,7 +140,7 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
     setIsRoundAnswered(false);
     setLastRoundResult(null);
     setStartTime(Date.now());
-  }, []);
+  }, [roundCount]);
 
   const handleRequestHint = () => {
     if (isRoundAnswered || hintsUsed >= 3) return;
@@ -143,8 +148,8 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
   };
 
   useEffect(() => {
-    generateNewRound();
-  }, [generateNewRound]);
+    generateNewRound(1);
+  }, []);
 
   useEffect(() => {
     audioEngine.setCorrectionMode(true);
@@ -272,8 +277,9 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
   };
 
   const handleNextRound = () => {
-    setRoundCount(prev => prev + 1);
-    generateNewRound();
+    const nextRound = roundCount + 1;
+    setRoundCount(nextRound);
+    generateNewRound(nextRound);
   };
 
   return (

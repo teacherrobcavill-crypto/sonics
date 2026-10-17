@@ -14,26 +14,21 @@ export const ISO_OCTAVE_THIRD: number[] = [
 ];
 
 export const HPF_CUTOFFS: number[] = [
-  30, 45, 60, 80, 120, 180, 250, 350, 500, 750, 1000, 1500, 2200, 3300, 5000
+  50, 60, 80, 120, 180, 250, 350, 500, 750, 1000, 1500, 2200, 3300, 5000
 ];
 
 export const LPF_CUTOFFS: number[] = [
-  50, 80, 150, 250, 350, 500, 750, 1000, 1500, 2200, 3300, 5000, 7000, 10000, 14000, 18000
+  50, 80, 150, 250, 350, 500, 750, 1000, 1500, 2200, 3300, 5000, 7000, 10000, 12500, 15000
 ];
 
 /**
  * Weighted probability generator for Filter Doctor cutoffs.
- * Significantly skews occurrences so extreme edges (30 Hz HPF, 50 Hz LPF, and 18 kHz LPF)
- * occur far less often (~1.2% - 1.5% each) while practical studio mixing
- * ranges occur much more frequently.
- * Supports HPF up to 5 kHz and LPF down to 50 Hz.
+ * Strictly bounded between 50 Hz and 15,000 Hz.
  */
 export function getWeightedFilterCutoff(type: 'highpass' | 'lowpass'): number {
   if (type === 'highpass') {
-    // 30 Hz heavily diminished, core mixing points (80 Hz - 500 Hz) favored, extending up to 5 kHz
     const weights: Record<number, number> = {
-      30: 1,    // Extremely rare sub-bass rumble (<1.5% probability)
-      45: 3,
+      50: 3,
       60: 6,
       80: 10,
       120: 10,
@@ -50,9 +45,8 @@ export function getWeightedFilterCutoff(type: 'highpass' | 'lowpass'): number {
     };
     return pickWeightedNumber(HPF_CUTOFFS, weights);
   } else {
-    // 50 Hz & 18 kHz heavily diminished, core audible points (1 kHz - 10 kHz) favored, extending down to 50 Hz
     const weights: Record<number, number> = {
-      50: 1,    // Extremely deep sub low-pass (<1.5% probability)
+      50: 1,
       80: 2,
       150: 3,
       250: 4,
@@ -66,33 +60,113 @@ export function getWeightedFilterCutoff(type: 'highpass' | 'lowpass'): number {
       5000: 10,
       7000: 10,
       10000: 10,
-      14000: 4,
-      18000: 1   // Extremely rare ultrasonic edge (<1.5% probability)
+      12500: 5,
+      15000: 2
     };
     return pickWeightedNumber(LPF_CUTOFFS, weights);
   }
 }
 
 /**
- * Weighted probability generator for Peak Master target frequencies.
- * Drastically reduces occurrences of frequencies below 50 Hz (31.5 Hz, 40 Hz)
- * and above 15 kHz (16 kHz, 20 kHz) to < 1% combined chance, focusing training
- * on the critical audible and mixing spectrum (50 Hz to 12.5 kHz).
+ * Complete Training Spectrum Bands strictly spanning 50 Hz to 15 kHz.
+ * Contains standard ISO 1/3-octave frequencies with 50 Hz as the lower limit
+ * and 15,000 Hz (15 kHz) as the upper limit.
  */
-export function getWeightedPeakMasterFrequency(candidateBands: number[] = ISO_OCTAVE_THIRD): number {
-  const weights: Record<number, number> = {};
+export const TRAINING_SPECTRUM_BANDS: number[] = [
+  50, 63, 80, 100, 125, 160, 200, 250, 315, 400, 500, 630, 800,
+  1000, 1250, 1600, 2000, 2500, 3150, 4000, 5000, 6300, 8000, 10000, 12500, 15000
+];
 
-  candidateBands.forEach(freq => {
-    if (freq < 50) {
-      weights[freq] = 1; // Drastically reduced extreme sub-bass (< 0.4% chance each)
-    } else if (freq > 15000) {
-      weights[freq] = 1; // Drastically reduced extreme ultra-highs (< 0.4% chance each)
-    } else {
-      weights[freq] = 20; // Core audible studio mixing frequencies
+/**
+ * 4 Acoustically Balanced Spectrum Zones for ear training:
+ * 1. Bass / Sub-Bass: 50 Hz – 200 Hz
+ * 2. Low-Mid: 250 Hz – 630 Hz
+ * 3. High-Mid: 800 Hz – 2.5 kHz
+ * 4. Treble / Air: 3.15 kHz – 15 kHz
+ */
+export const SPECTRUM_ZONES = {
+  bass: [50, 63, 80, 100, 125, 160, 200],
+  low_mid: [250, 315, 400, 500, 630],
+  high_mid: [800, 1000, 1250, 1600, 2000, 2500],
+  treble: [3150, 4000, 5000, 6300, 8000, 10000, 12500, 15000]
+};
+
+const ZONE_ROTATION: (keyof typeof SPECTRUM_ZONES)[] = ['high_mid', 'bass', 'treble', 'low_mid'];
+
+export interface TargetFrequencyOptions {
+  roundNumber?: number;
+  previousFreq?: number | null;
+  recentFreqs?: number[];
+  filterType?: string;
+  minFreq?: number;
+  maxFreq?: number;
+}
+
+/**
+ * Stratified frequency generator ensuring:
+ * 1. Strict boundaries: min 50 Hz, max 15,000 Hz (never exceeds extremes).
+ * 2. Anti-clustering: Consecutive rounds jump across the spectrum (minimum 1.0 octave apart).
+ * 3. Stratified coverage: Thoroughly assesses all 4 spectrum registers (Bass, Low-Mid, High-Mid, Treble)
+ *    every 4 rounds, ensuring complete spectral coverage without clustering in one place.
+ * 4. Recent history memory: Avoids repeating recently tested frequencies.
+ */
+export function getNextStratifiedTargetFrequency({
+  roundNumber = 1,
+  previousFreq = null,
+  recentFreqs = [],
+  filterType = 'peaking',
+  minFreq = 50,
+  maxFreq = 15000
+}: TargetFrequencyOptions = {}): number {
+  const effectiveMin = Math.max(50, minFreq);
+  const effectiveMax = Math.min(15000, maxFreq);
+
+  let targetZone: keyof typeof SPECTRUM_ZONES;
+
+  if (filterType === 'lowshelf') {
+    // Low shelf strictly 50 Hz to 1000 Hz
+    targetZone = (roundNumber % 2 === 0) ? 'bass' : 'low_mid';
+  } else if (filterType === 'highshelf') {
+    // High shelf strictly 1000 Hz to 15000 Hz
+    targetZone = (roundNumber % 2 === 0) ? 'high_mid' : 'treble';
+  } else {
+    // Parametric / Peaking: cycles High-Mid -> Bass -> Treble -> Low-Mid
+    const zoneIdx = (Math.max(1, roundNumber) - 1) % ZONE_ROTATION.length;
+    targetZone = ZONE_ROTATION[zoneIdx];
+  }
+
+  let candidates = SPECTRUM_ZONES[targetZone].filter(f => f >= effectiveMin && f <= effectiveMax);
+
+  // If no candidates in designated zone, fallback to all valid spectrum bands
+  if (candidates.length === 0) {
+    candidates = TRAINING_SPECTRUM_BANDS.filter(f => f >= effectiveMin && f <= effectiveMax);
+  }
+
+  // Anti-clustering: require at least 1.0 octave distance from previous round
+  if (previousFreq && previousFreq > 0) {
+    const wideEnough = candidates.filter(f => Math.abs(Math.log2(f / previousFreq)) >= 1.0);
+    if (wideEnough.length > 0) {
+      candidates = wideEnough;
     }
-  });
+  }
 
-  return pickWeightedNumber(candidateBands, weights);
+  // Anti-repetition: avoid the last 4 frequencies
+  const recentSlice = recentFreqs.slice(-4);
+  const notRecent = candidates.filter(f => !recentSlice.includes(f));
+  if (notRecent.length > 0) {
+    candidates = notRecent;
+  }
+
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+/**
+ * Standard generator fallback strictly bounded to 50 Hz - 15 kHz.
+ */
+export function getWeightedPeakMasterFrequency(candidateBands: number[] = TRAINING_SPECTRUM_BANDS): number {
+  const validBands = candidateBands.filter(f => f >= 50 && f <= 15000);
+  if (validBands.length === 0) return 1000;
+  return validBands[Math.floor(Math.random() * validBands.length)];
 }
 
 function pickWeightedNumber(items: number[], weights: Record<number, number>): number {
