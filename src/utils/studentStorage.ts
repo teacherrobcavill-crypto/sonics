@@ -140,7 +140,7 @@ const DEFAULT_CLASSMATES: StudentProfile[] = [
     password: 'demo',
     avatarColor: 'from-amber-500 to-orange-600',
     createdAt: Date.now() - 86400000 * 365,
-    cohortYear: 'Alumni (2024)',
+    cohortYear: '2026',
     defaultTrack: 'dance_pop',
     stats: {
       totalScore: 9450000,
@@ -204,7 +204,7 @@ const DEFAULT_CLASSMATES: StudentProfile[] = [
     password: 'demo',
     avatarColor: 'from-purple-500 to-pink-600',
     createdAt: Date.now() - 86400000 * 200,
-    cohortYear: 'Alumni (2025)',
+    cohortYear: '2026',
     defaultTrack: 'electronic_pop',
     stats: {
       totalScore: 6350000,

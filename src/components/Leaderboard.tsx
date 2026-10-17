@@ -143,6 +143,15 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
 
   const baseLeaderboard = cloudEntries.length > 0 ? cloudEntries : getLeaderboard(selectedGame);
   const rawLeaderboard = mergeGlynJohnsIntoLeaderboard(baseLeaderboard, selectedGame, currentStudent?.id);
+
+  // Dynamic available years starting with game birth year (2026) up to current calendar year
+  const GAME_LAUNCH_YEAR = 2026;
+  const currentCalendarYear = new Date().getFullYear();
+  const maxYear = Math.max(GAME_LAUNCH_YEAR, currentCalendarYear);
+  const availableYears: string[] = [];
+  for (let y = GAME_LAUNCH_YEAR; y <= maxYear; y++) {
+    availableYears.push(y.toString());
+  }
   
   // Filter by selected year
   const filteredLeaderboard = selectedCohort === 'all'
@@ -256,35 +265,34 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
           </button>
 
           <button
-            onClick={() => setSelectedCohort(formatYearLabel(currentStudent?.cohortYear) || '2026')}
+            onClick={() => setSelectedCohort(maxYear.toString())}
             className={`flex-1 flex items-center justify-center space-x-1.5 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg font-bold transition-all cursor-pointer ${
-              selectedCohort !== 'all' && formatYearLabel(selectedCohort) === formatYearLabel(currentStudent?.cohortYear || '2026')
+              selectedCohort === maxYear.toString()
                 ? 'bg-studio-accent text-studio-950 shadow-md shadow-studio-accent/25 ring-1 ring-studio-accent'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
             <Calendar className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{isMobile ? '📅 My Year' : `📅 My Year (${formatYearLabel(currentStudent?.cohortYear)})`}</span>
+            <span className="truncate">{isMobile ? `📅 Year ${maxYear}` : `📅 Year ${maxYear}`}</span>
           </button>
         </div>
 
-        {/* Other Year Filter selector */}
+        {/* Year Filter selector */}
         <div className={`flex items-center ${isMobile ? 'w-full gap-2 px-1' : 'justify-between sm:justify-end space-x-2 w-full sm:w-auto text-[11px] pt-1 sm:pt-0 border-t sm:border-t-0 border-studio-800/60'} text-slate-400 text-xs`}>
-          <span className="text-slate-400 font-mono text-[11px] shrink-0">Other:</span>
+          <span className="text-slate-400 font-mono text-[11px] shrink-0">Choose Year:</span>
           <select
-            value={['all', formatYearLabel(currentStudent?.cohortYear)].includes(formatYearLabel(selectedCohort)) ? '' : selectedCohort}
+            value={selectedCohort}
             onChange={(e) => {
               if (e.target.value) setSelectedCohort(e.target.value);
             }}
             className="bg-studio-900 border border-studio-800 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-studio-accent cursor-pointer text-xs font-mono min-w-0 flex-1 truncate"
           >
-            <option value="" disabled>Choose year...</option>
-            <option value="2026">2026</option>
-            <option value="2027">2027</option>
-            <option value="2028">2028</option>
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-            <option value="General">General</option>
+            <option value="all">⭐ All-Time</option>
+            {availableYears.map(yr => (
+              <option key={yr} value={yr}>
+                Year {yr}
+              </option>
+            ))}
           </select>
         </div>
       </div>
