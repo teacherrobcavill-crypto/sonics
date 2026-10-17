@@ -81,7 +81,7 @@ export const SessionStats: React.FC<SessionStatsProps> = ({
 
       </div>
 
-      {/* 2-Year Curriculum Ladder Progress Card */}
+      {/* 2-Year Rank Ladder Progress Card */}
       <div className="bg-gradient-to-r from-studio-900 via-studio-900 to-studio-950 border border-studio-800 p-5 rounded-2xl shadow-xl space-y-3 font-mono">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex items-center space-x-2.5">
@@ -98,7 +98,7 @@ export const SessionStats: React.FC<SessionStatsProps> = ({
             className="text-xs text-studio-accent hover:text-white flex items-center space-x-1 transition-colors self-start sm:self-auto cursor-pointer"
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>View 2-Year Curriculum Ladder (24 Ranks)</span>
+            <span>View Progressive Rank Ladder (24 Ranks)</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>

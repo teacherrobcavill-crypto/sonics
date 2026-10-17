@@ -53,7 +53,7 @@ const LEADERBOARD_GAMES: {
     color: 'text-amber-400',
     activeBg: 'bg-amber-500 text-studio-950 font-black shadow-amber-500/25',
     borderActive: 'border-amber-400',
-    description: 'Multi-Year Competition • Ranked by precision accuracy, points, and curriculum mastery.'
+    description: 'All-Time Competition • Ranked by precision accuracy, points, and ear training mastery.'
   },
   {
     id: 'peak_master',

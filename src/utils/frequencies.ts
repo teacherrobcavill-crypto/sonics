@@ -365,8 +365,8 @@ export interface RankInfo {
 }
 
 /**
- * 2-Year Audio Engineering Ear Training Curriculum Ladder (July to May each year = 22 months total)
- * Calibrated for a student completing 20 rounds per day averaging ~750 pts/round (~15,000 pts/day, ~450k/month).
+ * 2-Year Audio Engineering Ear Training Rank Ladder (22 months total)
+ * Calibrated for completing 20 rounds per day averaging ~750 pts/round (~15,000 pts/day, ~450k/month).
  * Year 1 culminates in May with Certified Studio Engineer (5.6M pts).
  * Year 2 culminates towards May with Legendary Golden Ears (10M pts).
  */

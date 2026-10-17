@@ -41,7 +41,7 @@ export const RankLadderModal: React.FC<RankLadderModalProps> = ({
                 {isMobile ? '2-Year Rank Ladder' : '2-Year Audio Engineering Rank Ladder'}
               </h2>
               <p className="text-[10px] sm:text-xs text-slate-400 mt-0.5 line-clamp-1 sm:line-clamp-none">
-                Curriculum Progression (July to May) &bull; Calibrated for 20 daily practice rounds
+                Progressive Skill Ladder (24 Ranks) &bull; Calibrated for 20 daily practice rounds
               </p>
             </div>
           </div>
