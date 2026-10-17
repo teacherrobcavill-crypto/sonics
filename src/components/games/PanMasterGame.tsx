@@ -918,7 +918,7 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
                 className="flex items-center justify-center space-x-2 p-3 bg-studio-900 hover:bg-studio-800 border border-studio-700/80 rounded-xl text-xs font-mono font-bold text-slate-200 transition-all cursor-pointer shadow"
               >
                 <Music className="w-4 h-4" />
-                <span>EQ Sandbox (Unlimited)</span>
+                <span>{isMobile ? 'EQ Sandbox' : 'EQ Sandbox (Unlimited)'}</span>
               </button>
             </div>
           </div>

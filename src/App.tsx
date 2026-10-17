@@ -528,7 +528,7 @@ export const App: React.FC = () => {
               }`}
             >
               <Music className="w-4 h-4" />
-              <span>EQ Sandbox (Unlimited)</span>
+              <span>{isMobile ? 'EQ Sandbox' : 'EQ Sandbox (Unlimited)'}</span>
             </button>
 
             {/* Leaderboard Tab */}

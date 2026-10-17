@@ -64,7 +64,7 @@ export const SessionStats: React.FC<SessionStatsProps> = ({
         <div
           onClick={() => setIsLadderOpen(true)}
           className="bg-studio-900 border border-studio-800 p-4 rounded-2xl flex items-center space-x-3.5 hover:border-slate-700 transition-all cursor-pointer group"
-          title="Click to view 2-Year Rank Ladder"
+          title="Click to view Rank Ladder (24 Ranks)"
         >
           <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
             <TrendingUp className="w-5 h-5" />

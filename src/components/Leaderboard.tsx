@@ -8,7 +8,6 @@ import {
   TrendingUp,
   Sparkles,
   Medal,
-  BookOpen,
   Filter,
   Calendar,
   Activity,
@@ -189,10 +188,9 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
         <div className={`flex items-center gap-2 ${isMobile ? 'w-full' : 'w-full sm:w-auto justify-between sm:justify-end'}`}>
           <button
             onClick={() => setIsLadderOpen(true)}
-            className={`flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl bg-studio-950 hover:bg-studio-850 border border-studio-800 text-slate-300 hover:text-white text-xs font-mono transition-all cursor-pointer shadow-sm ${isMobile ? 'flex-1' : 'shrink-0'}`}
+            className={`flex items-center justify-center px-3 py-2 rounded-xl bg-studio-950 hover:bg-studio-850 border border-studio-800 text-slate-300 hover:text-white text-xs font-mono transition-all cursor-pointer shadow-sm ${isMobile ? 'flex-1' : 'shrink-0'}`}
           >
-            <BookOpen className="w-3.5 h-3.5 text-studio-accent shrink-0" />
-            <span className="truncate">{isMobile ? 'Rank Ladder' : '2-Year Rank Ladder (24 Ranks)'}</span>
+            <span className="truncate">Rank Ladder (24 Ranks)</span>
           </button>
 
           {currentStudent && currentStudentStats ? (
