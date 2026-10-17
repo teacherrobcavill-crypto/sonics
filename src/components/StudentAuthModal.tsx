@@ -35,6 +35,7 @@ import {
   updateStudentTheme
 } from '../utils/studentStorage';
 import { validateName } from '../utils/nameValidator';
+import { GLYN_JOHNS_ID } from '../utils/glynJohns';
 import {
   cloudLoginOrRegisterStudent,
   cloudResetStudentAccount,
@@ -113,7 +114,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
   if (!isOpen) return null;
 
   const storedProfiles = getStoredProfiles();
-  const allProfiles = Object.values(storedProfiles);
+  const allProfiles = Object.values(storedProfiles).filter(p => p.id !== GLYN_JOHNS_ID);
   const cloudActive = isFirebaseReady();
 
   const handleNameChange = (newName: string) => {

@@ -1,6 +1,7 @@
 import { GameMode, RoundResult, UserStats, AudioSourceType } from '../types';
 import { getRankTitle } from './frequencies';
 import { validateName } from './nameValidator';
+import { mergeGlynJohnsIntoLeaderboard } from './glynJohns';
 
 export const DAILY_ROUND_LIMIT = 20;
 
@@ -954,15 +955,6 @@ export function getLeaderboard(scope: LeaderboardScope = 'all'): LeaderboardEntr
     };
   });
 
-  // Sort by total score descending, then by best streak
-  entries.sort((a, b) => {
-    if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-    return b.bestStreak - a.bestStreak;
-  });
-
-  // Assign ranks
-  return entries.map((entry, idx) => ({
-    ...entry,
-    rank: idx + 1
-  }));
+  // Re-sort and merge benchmark participant Glyn Johns
+  return mergeGlynJohnsIntoLeaderboard(entries, scope, activeId);
 }

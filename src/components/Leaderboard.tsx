@@ -26,6 +26,7 @@ import {
   formatYearLabel
 } from '../utils/studentStorage';
 import { cloudFetchLeaderboard, isFirebaseReady } from '../services/firebase';
+import { mergeGlynJohnsIntoLeaderboard } from '../utils/glynJohns';
 import { RankLadderModal } from './RankLadderModal';
 import { GameMode } from '../types';
 
@@ -140,7 +141,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     }
   }, [currentStudent, selectedGame]);
 
-  const rawLeaderboard = cloudEntries.length > 0 ? cloudEntries : getLeaderboard(selectedGame);
+  const baseLeaderboard = cloudEntries.length > 0 ? cloudEntries : getLeaderboard(selectedGame);
+  const rawLeaderboard = mergeGlynJohnsIntoLeaderboard(baseLeaderboard, selectedGame, currentStudent?.id);
   
   // Filter by selected year
   const filteredLeaderboard = selectedCohort === 'all'

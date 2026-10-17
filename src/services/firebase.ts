@@ -17,6 +17,7 @@ import {
 import { StudentProfile, LeaderboardEntry, DailyUsage, getTodayDateString, LeaderboardScope, getStudentModeStats, AppTheme } from '../utils/studentStorage';
 import { validateName } from '../utils/nameValidator';
 import { getRankTitle } from '../utils/frequencies';
+import { mergeGlynJohnsIntoLeaderboard } from '../utils/glynJohns';
 import { RoundResult, AudioSourceType, GameMode } from '../types';
 
 // Stored config with fallback to user's provided project
@@ -431,14 +432,7 @@ export async function cloudFetchLeaderboard(
     });
 
     if (entries.length > 0) {
-      entries.sort((a, b) => {
-        if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-        return b.bestStreak - a.bestStreak;
-      });
-      return entries.map((entry, idx) => ({
-        ...entry,
-        rank: idx + 1
-      }));
+      return mergeGlynJohnsIntoLeaderboard(entries, scope, activeStudentId);
     }
 
     // Fallback: Query from 'scores' collection if students collection has no documents
@@ -470,14 +464,11 @@ export async function cloudFetchLeaderboard(
       }
     });
 
-    const fallbackEntries = Array.from(scoreMap.values())
-      .sort((a, b) => b.totalScore - a.totalScore)
-      .map((entry, idx) => ({ ...entry, rank: idx + 1 }));
-
-    return fallbackEntries;
+    const fallbackEntries = Array.from(scoreMap.values());
+    return mergeGlynJohnsIntoLeaderboard(fallbackEntries, scope, activeStudentId);
   } catch (e) {
     console.error("Failed to fetch cloud leaderboard:", e);
-    return [];
+    return mergeGlynJohnsIntoLeaderboard([], scope, activeStudentId);
   }
 }
 

@@ -43,6 +43,10 @@ export function validateName(name: string): { isValid: boolean; error?: string }
     return { isValid: false, error: 'Name must be 30 characters or less.' };
   }
 
+  if (trimmed.toLowerCase() === 'glyn johns') {
+    return { isValid: false, error: '"Glyn Johns" is reserved as the benchmark reference participant.' };
+  }
+
   const norm = normalize(trimmed);
   const stripped = norm.replace(/[^a-z0-9]/g, '');
 
