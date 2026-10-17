@@ -12,8 +12,6 @@ import {
   User,
   Sparkles,
   Compass,
-  Monitor,
-  Smartphone,
   Volume2,
   VolumeX,
   Palette
@@ -81,17 +79,30 @@ export const App: React.FC = () => {
     }
   };
 
-  // View Mode: 'desktop' or 'mobile'
-  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>(() => {
-    const saved = localStorage.getItem('soniceq_view_mode');
-    if (saved === 'desktop' || saved === 'mobile') return saved;
-    return typeof window !== 'undefined' && window.innerWidth < 768 ? 'mobile' : 'desktop';
+  // Automatic Mobile / Desktop Device & Viewport Detection
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    const isSmallScreen = window.innerWidth < 768;
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+    const isMobileUA = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    return isSmallScreen || (isTouchDevice && window.innerWidth < 850) || (isMobileUA && window.innerWidth < 900);
   });
 
-  const handleViewModeChange = (mode: 'desktop' | 'mobile') => {
-    setViewMode(mode);
-    localStorage.setItem('soniceq_view_mode', mode);
-  };
+  useEffect(() => {
+    const checkMobile = () => {
+      const isSmallScreen = window.innerWidth < 768;
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0 || (window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+      const isMobileUA = /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      setIsMobile(isSmallScreen || (isTouchDevice && window.innerWidth < 850) || (isMobileUA && window.innerWidth < 900));
+    };
+
+    window.addEventListener('resize', checkMobile);
+    window.addEventListener('orientationchange', checkMobile);
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
+  }, []);
 
   // Audio Source Tracking (detect custom uploaded file for unranked unlimited practice)
   const [audioSource, setAudioSource] = useState<AudioSourceType>(() => audioEngine.getCurrentSourceType());
@@ -284,8 +295,6 @@ export const App: React.FC = () => {
     setHistory([]);
   };
 
-  const isMobile = viewMode === 'mobile';
-
   return (
     <div className="min-h-screen bg-studio-950 text-slate-100 flex flex-col font-sans">
       
@@ -312,38 +321,8 @@ export const App: React.FC = () => {
             </div>
           </div>
 
-          {/* User Account, Volume (Mobile) & View Mode Controls */}
+          {/* User Account, Theme & Controls */}
           <div className={`flex items-center ${isMobile ? 'space-x-1' : 'space-x-1.5 sm:space-x-2.5'} flex-shrink-0`}>
-            
-            {/* View Mode Toggle: Desktop vs Mobile */}
-            <div className="flex items-center bg-studio-950/90 p-0.5 sm:p-1 rounded-xl border border-studio-800 text-xs font-mono shadow-sm">
-              <button
-                type="button"
-                onClick={() => handleViewModeChange('desktop')}
-                className={`flex items-center space-x-1 ${isMobile ? 'px-1.5 py-1' : 'px-2 py-1'} rounded-lg transition-all cursor-pointer ${
-                  viewMode === 'desktop'
-                    ? 'bg-studio-700 text-white font-bold shadow'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Switch to Desktop Full Studio View"
-              >
-                <Monitor className="w-3.5 h-3.5" />
-                {!isMobile && <span className="hidden sm:inline">Desktop</span>}
-              </button>
-              <button
-                type="button"
-                onClick={() => handleViewModeChange('mobile')}
-                className={`flex items-center space-x-1 ${isMobile ? 'px-1.5 py-1' : 'px-2 py-1'} rounded-lg transition-all cursor-pointer ${
-                  viewMode === 'mobile'
-                    ? 'bg-studio-accent text-studio-950 font-bold shadow'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-                title="Switch to Mobile Friendly View"
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-                {!isMobile && <span className="hidden sm:inline">Mobile</span>}
-              </button>
-            </div>
 
             {/* Quick Studio Theme Switcher */}
             <button
