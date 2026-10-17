@@ -1,7 +1,13 @@
 import { GameMode, RoundResult, UserStats, AudioSourceType } from '../types';
 import { getRankTitle } from './frequencies';
+import { validateName } from './nameValidator';
 
 export const DAILY_ROUND_LIMIT = 20;
+
+export function formatYearLabel(yearStr?: string): string {
+  if (!yearStr) return '2026';
+  return yearStr.replace(/Class of /i, '').replace(/Alumni \(/i, '').replace(/\)/g, '').trim();
+}
 
 export interface DailyUsage {
   date: string; // YYYY-MM-DD
@@ -541,7 +547,7 @@ export function signInStudent(
 ): { success: boolean; profile?: StudentProfile; error?: string } {
   const trimmedName = name.trim();
   if (!trimmedName) {
-    return { success: false, error: 'Please enter your student name.' };
+    return { success: false, error: 'Please enter your name.' };
   }
   if (!password.trim()) {
     return { success: false, error: 'Please enter your password.' };
@@ -554,12 +560,12 @@ export function signInStudent(
   if (!existing) {
     return {
       success: false,
-      error: 'No account found for this student name on this device. If you are a new student, please switch to the "Create Account" tab.'
+      error: 'No account found for this name on this device. If you are new, please switch to the "Create Account" tab.'
     };
   }
 
   if (existing.password !== password) {
-    return { success: false, error: 'Incorrect password for this student account. Please try again.' };
+    return { success: false, error: 'Incorrect password. Please try again.' };
   }
 
   existing.stats.rankTitle = getRankTitle(existing.stats.totalScore, existing.stats.roundsPlayed);
@@ -573,14 +579,16 @@ export function signInStudent(
 export function registerStudent(
   name: string,
   password: string,
-  cohortYear: string = 'Class of 2026',
+  cohortYear: string = '2026',
   defaultTrack: AudioSourceType = 'dance_pop',
   theme?: AppTheme
 ): { success: boolean; profile?: StudentProfile; error?: string } {
-  const trimmedName = name.trim();
-  if (!trimmedName) {
-    return { success: false, error: 'Please enter your student name.' };
+  const nameValidation = validateName(name);
+  if (!nameValidation.isValid) {
+    return { success: false, error: nameValidation.error };
   }
+
+  const trimmedName = name.trim();
   if (!password.trim()) {
     return { success: false, error: 'Please choose a password.' };
   }
@@ -594,7 +602,7 @@ export function registerStudent(
   if (profiles[normalizedKey]) {
     return {
       success: false,
-      error: 'An account with this name already exists. Students may only create one account. Please switch to the "Sign In" tab.'
+      error: 'An account with this name already exists. Each person may only create one account. Please switch to the "Sign In" tab.'
     };
   }
 

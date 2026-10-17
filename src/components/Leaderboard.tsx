@@ -10,7 +10,7 @@ import {
   Medal,
   BookOpen,
   Filter,
-  GraduationCap,
+  Calendar,
   Activity,
   Layers,
   Compass,
@@ -22,7 +22,8 @@ import {
   LeaderboardEntry,
   StudentProfile,
   LeaderboardScope,
-  getStudentModeStats
+  getStudentModeStats,
+  formatYearLabel
 } from '../utils/studentStorage';
 import { cloudFetchLeaderboard, isFirebaseReady } from '../services/firebase';
 import { RankLadderModal } from './RankLadderModal';
@@ -141,10 +142,10 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
 
   const rawLeaderboard = cloudEntries.length > 0 ? cloudEntries : getLeaderboard(selectedGame);
   
-  // Filter by selected cohort
+  // Filter by selected year
   const filteredLeaderboard = selectedCohort === 'all'
     ? rawLeaderboard
-    : rawLeaderboard.filter(e => (e.cohortYear || 'Class of 2026') === selectedCohort);
+    : rawLeaderboard.filter(e => formatYearLabel(e.cohortYear) === formatYearLabel(selectedCohort));
 
   const topThree = filteredLeaderboard.slice(0, 3);
   const currentGameConfig = LEADERBOARD_GAMES.find(g => g.id === selectedGame) || LEADERBOARD_GAMES[0];
@@ -237,7 +238,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
         </div>
       </div>
 
-      {/* Cohort Toggle: All-Time Hall of Fame vs Class Year */}
+      {/* Year Toggle: All-Time Hall of Fame vs Selected Year */}
       <div className={`flex flex-col ${isMobile ? 'gap-2 p-2' : 'sm:flex-row items-stretch sm:items-center justify-between gap-2.5 p-2.5'} bg-studio-950/90 rounded-2xl border border-studio-800 font-mono text-xs shadow-md`}>
         <div className={`flex items-center gap-1.5 ${isMobile ? 'w-full' : 'space-x-1.5 sm:space-x-2 w-full sm:w-auto'} p-1 bg-studio-900 rounded-xl border border-studio-800`}>
           <button
@@ -253,34 +254,35 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
           </button>
 
           <button
-            onClick={() => setSelectedCohort(currentStudent?.cohortYear || 'Class of 2026')}
+            onClick={() => setSelectedCohort(formatYearLabel(currentStudent?.cohortYear) || '2026')}
             className={`flex-1 flex items-center justify-center space-x-1.5 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-lg font-bold transition-all cursor-pointer ${
-              selectedCohort === (currentStudent?.cohortYear || 'Class of 2026')
+              selectedCohort !== 'all' && formatYearLabel(selectedCohort) === formatYearLabel(currentStudent?.cohortYear || '2026')
                 ? 'bg-studio-accent text-studio-950 shadow-md shadow-studio-accent/25 ring-1 ring-studio-accent'
                 : 'text-slate-400 hover:text-white'
             }`}
           >
-            <GraduationCap className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">{isMobile ? '🎓 My Class' : `🎓 My Class Year (${currentStudent?.cohortYear || 'Class of 2026'})`}</span>
+            <Calendar className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{isMobile ? '📅 My Year' : `📅 My Year (${formatYearLabel(currentStudent?.cohortYear)})`}</span>
           </button>
         </div>
 
-        {/* Other Cohort Filter selector */}
+        {/* Other Year Filter selector */}
         <div className={`flex items-center ${isMobile ? 'w-full gap-2 px-1' : 'justify-between sm:justify-end space-x-2 w-full sm:w-auto text-[11px] pt-1 sm:pt-0 border-t sm:border-t-0 border-studio-800/60'} text-slate-400 text-xs`}>
           <span className="text-slate-400 font-mono text-[11px] shrink-0">Other:</span>
           <select
-            value={['all', currentStudent?.cohortYear || 'Class of 2026'].includes(selectedCohort) ? '' : selectedCohort}
+            value={['all', formatYearLabel(currentStudent?.cohortYear)].includes(formatYearLabel(selectedCohort)) ? '' : selectedCohort}
             onChange={(e) => {
               if (e.target.value) setSelectedCohort(e.target.value);
             }}
             className="bg-studio-900 border border-studio-800 text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-studio-accent cursor-pointer text-xs font-mono min-w-0 flex-1 truncate"
           >
-            <option value="" disabled>Choose cohort...</option>
-            <option value="Class of 2026">Class of 2026</option>
-            <option value="Class of 2027">Class of 2027</option>
-            <option value="Class of 2028">Class of 2028</option>
-            <option value="Alumni (2025)">Alumni (2025)</option>
-            <option value="Alumni (2024)">Alumni (2024)</option>
+            <option value="" disabled>Choose year...</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="General">General</option>
           </select>
         </div>
       </div>
@@ -379,7 +381,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
           <div className="flex items-center space-x-2">
             <Award className="w-4 h-4 text-studio-accent shrink-0" />
             <span className="font-bold text-xs sm:text-sm text-white truncate">
-              {currentGameConfig.label} Standings ({filteredLeaderboard.length} Students)
+              {currentGameConfig.label} Standings ({filteredLeaderboard.length} Players)
             </span>
           </div>
           <span className="text-[10px] sm:text-xs font-mono text-slate-400 shrink-0">
@@ -456,7 +458,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
               <thead className="bg-studio-950/70 border-b border-studio-800 text-slate-400 uppercase text-[10px] tracking-wider">
                 <tr>
                   <th className="py-3 px-4">Rank</th>
-                  <th className="py-3 px-4">Student</th>
+                  <th className="py-3 px-4">Name</th>
                   <th className="py-3 px-4">Total Score</th>
                   <th className="py-3 px-4">Rank Title</th>
                   <th className="py-3 px-4">Rounds</th>
@@ -503,7 +505,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
                               )}
                               {student.cohortYear && (
                                 <span className="px-1.5 py-0.2 text-[9px] bg-studio-950 text-slate-400 border border-studio-800 rounded">
-                                  {student.cohortYear}
+                                  {formatYearLabel(student.cohortYear)}
                                 </span>
                               )}
                             </div>

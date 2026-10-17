@@ -15,6 +15,7 @@ import {
   onSnapshot
 } from 'firebase/firestore';
 import { StudentProfile, LeaderboardEntry, DailyUsage, getTodayDateString, LeaderboardScope, getStudentModeStats, AppTheme } from '../utils/studentStorage';
+import { validateName } from '../utils/nameValidator';
 import { getRankTitle } from '../utils/frequencies';
 import { RoundResult, AudioSourceType, GameMode } from '../types';
 
@@ -90,14 +91,15 @@ export function getFirebaseDb(): Firestore | null {
 export async function cloudLoginOrRegisterStudent(
   name: string,
   password: string,
-  cohortYear: string = 'Class of 2026',
+  cohortYear: string = '2026',
   defaultTrack: AudioSourceType = 'dance_pop',
   theme?: AppTheme
 ): Promise<{ success: boolean; profile?: StudentProfile; error?: string; isNewAccount?: boolean }> {
-  const trimmedName = name.trim();
-  if (!trimmedName) {
-    return { success: false, error: 'Please enter your name.' };
+  const nameValidation = validateName(name);
+  if (!nameValidation.isValid) {
+    return { success: false, error: nameValidation.error };
   }
+  const trimmedName = name.trim();
   if (!password.trim()) {
     return { success: false, error: 'Please enter your password.' };
   }
@@ -191,7 +193,7 @@ export async function cloudLoginOrRegisterStudent(
     console.error("Firestore cloud auth error:", err);
     return {
       success: false,
-      error: err.message || 'Unable to connect to classroom cloud database. Please verify internet connection.'
+      error: err.message || 'Unable to connect to cloud database. Please verify internet connection.'
     };
   }
 }

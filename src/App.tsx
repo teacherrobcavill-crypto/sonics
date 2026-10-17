@@ -376,7 +376,7 @@ export const App: React.FC = () => {
               <button
                 onClick={() => setIsAuthModalOpen(true)}
                 className={`flex items-center ${isMobile ? 'p-1' : 'space-x-2.5 px-3 py-1.5'} bg-studio-950/90 rounded-xl border border-studio-800 hover:border-slate-700 transition-all text-xs font-mono group cursor-pointer`}
-                title="Switch student profile or sign out"
+                title="Switch profile or sign out"
               >
                 <div className={`${isMobile ? 'w-6 h-6' : 'w-7 h-7'} rounded-lg bg-gradient-to-tr ${currentStudent.avatarColor} flex items-center justify-center font-bold text-xs text-white shadow-sm flex-shrink-0`}>
                   {currentStudent.name.charAt(0).toUpperCase()}
@@ -398,7 +398,7 @@ export const App: React.FC = () => {
                 className={`flex items-center space-x-1 bg-studio-accent text-studio-950 ${isMobile ? 'px-2 py-1 text-[10px]' : 'px-3 sm:px-3.5 py-1.5 text-xs'} rounded-xl font-bold font-mono uppercase tracking-wider shadow-md shadow-studio-accent/20 hover:brightness-110 active:scale-95 transition-all cursor-pointer`}
               >
                 <User className="w-3 h-3" />
-                <span>{isMobile ? 'Login' : 'Student Login'}</span>
+                <span>Login</span>
               </button>
             )}
 

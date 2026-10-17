@@ -32,8 +32,10 @@ import {
   THEME_OPTIONS,
   getSavedTheme,
   saveTheme,
-  updateStudentTheme
+  updateStudentTheme,
+  formatYearLabel
 } from '../utils/studentStorage';
+import { validateName } from '../utils/nameValidator';
 import {
   cloudLoginOrRegisterStudent,
   cloudResetStudentAccount,
@@ -72,7 +74,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
   const [tab, setTab] = useState<'signin' | 'register'>('signin');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
-  const [cohortYear, setCohortYear] = useState('Class of 2026');
+  const [cohortYear, setCohortYear] = useState('2026');
   const [sessionDefaultTrack, setSessionDefaultTrack] = useState<AudioSourceType>(() => {
     return currentStudent?.defaultTrack || 'dance_pop';
   });
@@ -134,6 +136,13 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
     setSuccessMsg(null);
     setIsSubmitting(true);
 
+    const nameValidation = validateName(name);
+    if (!nameValidation.isValid) {
+      setError(nameValidation.error || 'Please enter a valid name.');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       if (cloudActive) {
         // Try Cloud Firestore Authentication
@@ -152,13 +161,13 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
 
         // Check single-account rule on cloud
         if (tab === 'register' && !cloudRes.isNewAccount) {
-          setError('An account with this name already exists in the cloud. You only get one account. Please use the "Sign In" tab.');
+          setError('An account with this name already exists. Each person only gets one account. Please use the "Sign In" tab.');
           setIsSubmitting(false);
           return;
         }
 
         if (tab === 'signin' && cloudRes.isNewAccount) {
-          setError('No account found with this name. If you are a new student, please switch to the "Create Account" tab.');
+          setError('No account found with this name. If you are new, please switch to the "Create Account" tab.');
           setIsSubmitting(false);
           return;
         }
@@ -193,13 +202,13 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
       if (tab === 'register') {
         const res = registerStudent(name, password, cohortYear, 'dance_pop', selectedTheme);
         if (!res.success || !res.profile) {
-          setError(res.error || 'Failed to create student account.');
+          setError(res.error || 'Failed to create account.');
           setIsSubmitting(false);
           return;
         }
         saveTheme(selectedTheme);
         if (onThemeChanged) onThemeChanged(selectedTheme);
-        setSuccessMsg(`Account created! Welcome to the course, ${res.profile.name}!`);
+        setSuccessMsg(`Account created! Welcome, ${res.profile.name}!`);
         setTimeout(() => {
           onStudentChanged(res.profile!);
           setIsSubmitting(false);
@@ -208,7 +217,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
       } else {
         const res = signInStudent(name, password);
         if (!res.success || !res.profile) {
-          setError(res.error || 'Invalid student credentials.');
+          setError(res.error || 'Invalid credentials.');
           setIsSubmitting(false);
           return;
         }
@@ -304,11 +313,11 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
               <User className="w-4 h-4" />
             </div>
             <h3 className="text-lg font-bold text-white font-sans">
-              Student Audio Profile
+              Audio Profile
             </h3>
           </div>
           <p className="text-xs text-slate-400">
-            One permanent account per student for the two-year curriculum. Syncs scores across phone, laptop, and studio computers.
+            Syncs scores and training progress across phone, laptop, and desktop computers.
           </p>
         </div>
 
@@ -325,7 +334,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
                   <div className="text-sm font-bold text-white flex items-center gap-1.5">
                     <span>{currentStudent.name}</span>
                     <span className="text-[10px] font-mono font-normal px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
-                      {currentStudent.cohortYear || 'Class of 2026'}
+                      {formatYearLabel(currentStudent.cohortYear)}
                     </span>
                   </div>
                   <div className="text-xs font-mono text-amber-400 mt-0.5">
@@ -337,7 +346,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
               <button
                 onClick={handleLogout}
                 className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-mono text-slate-300 hover:text-white hover:bg-studio-800 transition-colors border border-studio-700 cursor-pointer"
-                title="Sign out of this student account on this machine"
+                title="Sign out of this account on this machine"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Log Out</span>
@@ -515,9 +524,9 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
         {/* Single Account Notice for Register Tab */}
         {tab === 'register' && (
           <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono flex items-start space-x-2">
-            <GraduationCap className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-400" />
+            <Sparkles className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-400" />
             <span>
-              <strong>One Account Policy:</strong> The first account you create is your permanent student ID for the entire 2-year course. Remember your password to log in on phone, laptop, and studio PCs.
+              <strong>One Account Policy:</strong> The first account you create is your permanent ID. Remember your password to log in on phone, laptop, and desktop computers.
             </span>
           </div>
         )}
@@ -526,7 +535,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div className="space-y-1">
             <label className="text-xs font-mono text-slate-300 font-semibold block">
-              Student Full Name
+              Name
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
@@ -536,7 +545,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
                 type="text"
                 value={name}
                 onChange={e => handleNameChange(e.target.value)}
-                placeholder="e.g. Alex Turner"
+                placeholder="e.g. Alex Morgan"
                 required
                 className="w-full pl-9 pr-3 py-2.5 bg-studio-950 border border-studio-800 rounded-xl text-sm font-sans text-white placeholder-slate-500 focus:outline-none focus:border-studio-accent transition-colors"
               />
@@ -555,14 +564,14 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                placeholder={tab === 'register' ? 'Choose a memorable password' : 'Enter your student password'}
+                placeholder={tab === 'register' ? 'Choose a memorable password' : 'Enter your password'}
                 required
                 className="w-full pl-9 pr-3 py-2.5 bg-studio-950 border border-studio-800 rounded-xl text-sm font-sans text-white placeholder-slate-500 focus:outline-none focus:border-studio-accent transition-colors"
               />
             </div>
           </div>
 
-          {/* Default Audio Track Selection (on Sign In tab: student can change each session!) */}
+          {/* Default Audio Track Selection (on Sign In tab) */}
           {tab === 'signin' && (
             <div className="space-y-1.5 pt-1">
               <label className="text-xs font-mono text-slate-300 font-semibold block flex items-center justify-between">
@@ -597,21 +606,23 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
             </div>
           )}
 
-          {/* Academic Cohort (on Register tab only) */}
+          {/* Choose Year (on Register tab only) */}
           {tab === 'register' && (
             <div className="space-y-1">
               <label className="text-xs font-mono text-slate-300 font-semibold block">
-                Academic Cohort
+                Choose Year
               </label>
               <select
                 value={cohortYear}
                 onChange={e => setCohortYear(e.target.value)}
-                className="w-full px-3 py-2.5 bg-studio-950 border border-studio-800 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-studio-accent"
+                className="w-full px-3 py-2.5 bg-studio-950 border border-studio-800 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-studio-accent cursor-pointer"
               >
-                <option value="Class of 2026">Class of 2026 (Year 1)</option>
-                <option value="Class of 2027">Class of 2027</option>
-                <option value="Class of 2028">Class of 2028</option>
-                <option value="Alumni">Course Alumni</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+                <option value="2028">2028</option>
+                <option value="2025">2025</option>
+                <option value="2024">2024</option>
+                <option value="General">General Practice</option>
               </select>
             </div>
           )}
@@ -690,12 +701,12 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
           </button>
         </form>
 
-        {/* Existing Classmates list for quick switch on shared workstation */}
+        {/* Existing profiles list for quick switch on shared workstation */}
         {allProfiles.length > 0 && (
           <div className="pt-2 border-t border-studio-800/80 space-y-2">
             <div className="flex items-center space-x-1.5 text-xs font-mono text-slate-400">
               <Users className="w-3.5 h-3.5 text-studio-accent" />
-              <span>Known Students on this Station:</span>
+              <span>Known people on this session:</span>
             </div>
             <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto scrollbar-none">
               {allProfiles.map(p => (

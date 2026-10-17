@@ -186,8 +186,8 @@ export const RankLadderModal: React.FC<RankLadderModalProps> = ({
         <div className="p-3 sm:p-4 border-t border-studio-800 bg-studio-950/60 flex items-center justify-between text-xs font-mono text-slate-400 gap-2">
           <div className="flex items-center space-x-2 truncate">
             <BookOpen className="w-4 h-4 text-studio-accent shrink-0" />
-            <span className="hidden sm:inline">Academic Program: 2 Years &bull; July to May Schedule</span>
-            <span className="sm:hidden text-[11px] truncate">2-Year Curriculum (July&ndash;May)</span>
+            <span className="hidden sm:inline">Training Program: Progressive Ranking Schedule</span>
+            <span className="sm:hidden text-[11px] truncate">Progressive Ear Training Ranks</span>
           </div>
           <button
             onClick={onClose}
