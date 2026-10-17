@@ -324,24 +324,24 @@ export const App: React.FC = () => {
           {/* User Account, Theme & Controls */}
           <div className={`flex items-center ${isMobile ? 'space-x-1' : 'space-x-1.5 sm:space-x-2.5'} flex-shrink-0`}>
 
-            {/* Quick Studio Theme Switcher */}
-            <button
-              type="button"
-              onClick={handleCycleTheme}
-              className={`flex items-center space-x-1.5 ${isMobile ? 'px-1.5 py-1' : 'px-2.5 py-1.5'} bg-studio-950/90 rounded-xl border border-studio-800 hover:border-slate-600 transition-all text-xs font-mono group cursor-pointer shadow-sm`}
-              title={`Console Theme: ${THEME_OPTIONS.find(t => t.id === currentTheme)?.name || 'Cyber Studio'}. Click to cycle themes.`}
-            >
-              <span
-                className="w-2.5 h-2.5 rounded-full border border-white/30 flex-shrink-0 group-hover:scale-110 transition-transform"
-                style={{ backgroundColor: THEME_OPTIONS.find(t => t.id === currentTheme)?.accentColor || '#00f0ff' }}
-              />
-              <Palette className="w-3.5 h-3.5 text-slate-400 group-hover:text-studio-accent transition-colors" />
-              {!isMobile && (
+            {/* Quick Studio Theme Switcher (Desktop Only on Main Page) */}
+            {!isMobile && (
+              <button
+                type="button"
+                onClick={handleCycleTheme}
+                className="flex items-center space-x-1.5 px-2.5 py-1.5 bg-studio-950/90 rounded-xl border border-studio-800 hover:border-slate-600 transition-all text-xs font-mono group cursor-pointer shadow-sm"
+                title={`Console Theme: ${THEME_OPTIONS.find(t => t.id === currentTheme)?.name || 'Cyber Studio'}. Click to cycle themes.`}
+              >
+                <span
+                  className="w-2.5 h-2.5 rounded-full border border-white/30 flex-shrink-0 group-hover:scale-110 transition-transform"
+                  style={{ backgroundColor: THEME_OPTIONS.find(t => t.id === currentTheme)?.accentColor || '#00f0ff' }}
+                />
+                <Palette className="w-3.5 h-3.5 text-slate-400 group-hover:text-studio-accent transition-colors" />
                 <span className="text-[11px] font-semibold text-slate-300 hidden md:inline">
                   {THEME_OPTIONS.find(t => t.id === currentTheme)?.name.split(' ')[0]}
                 </span>
-              )}
-            </button>
+              </button>
+            )}
 
             {/* Compact Master Volume Slider (Mobile Only - moved up next to Login) */}
             {isMobile && (
