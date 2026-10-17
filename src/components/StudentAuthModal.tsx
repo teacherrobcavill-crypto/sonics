@@ -32,8 +32,7 @@ import {
   THEME_OPTIONS,
   getSavedTheme,
   saveTheme,
-  updateStudentTheme,
-  formatYearLabel
+  updateStudentTheme
 } from '../utils/studentStorage';
 import { validateName } from '../utils/nameValidator';
 import {
@@ -74,7 +73,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
   const [tab, setTab] = useState<'signin' | 'register'>('signin');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
-  const [cohortYear, setCohortYear] = useState('2026');
+  const cohortYear = '2026';
   const [sessionDefaultTrack, setSessionDefaultTrack] = useState<AudioSourceType>(() => {
     return currentStudent?.defaultTrack || 'dance_pop';
   });
@@ -333,9 +332,6 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
                 <div>
                   <div className="text-sm font-bold text-white flex items-center gap-1.5">
                     <span>{currentStudent.name}</span>
-                    <span className="text-[10px] font-mono font-normal px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded border border-emerald-500/30">
-                      {formatYearLabel(currentStudent.cohortYear)}
-                    </span>
                   </div>
                   <div className="text-xs font-mono text-amber-400 mt-0.5">
                     {currentStudent.stats.totalScore.toLocaleString()} pts &bull; {currentStudent.stats.rankTitle}
@@ -606,26 +602,6 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
             </div>
           )}
 
-          {/* Choose Year (on Register tab only) */}
-          {tab === 'register' && (
-            <div className="space-y-1">
-              <label className="text-xs font-mono text-slate-300 font-semibold block">
-                Choose Year
-              </label>
-              <select
-                value={cohortYear}
-                onChange={e => setCohortYear(e.target.value)}
-                className="w-full px-3 py-2.5 bg-studio-950 border border-studio-800 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-studio-accent cursor-pointer"
-              >
-                <option value="2026">2026</option>
-                <option value="2027">2027</option>
-                <option value="2028">2028</option>
-                <option value="2025">2025</option>
-                <option value="2024">2024</option>
-                <option value="General">General Practice</option>
-              </select>
-            </div>
-          )}
 
           {/* Studio Console Theme Selection for Sign In / Register */}
           <div className="space-y-1.5 pt-1">
