@@ -132,352 +132,53 @@ function getRandomColor(): string {
   return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 }
 
-// Default initial classmates for a fun, competitive leaderboard out of the box
-const DEFAULT_CLASSMATES: StudentProfile[] = [
-  {
-    id: 'classmate_david',
-    name: 'David O. (Studio TA)',
-    password: 'demo',
-    avatarColor: 'from-amber-500 to-orange-600',
-    createdAt: Date.now() - 86400000 * 365,
-    cohortYear: '2026',
-    defaultTrack: 'dance_pop',
-    stats: {
-      totalScore: 9450000,
-      roundsPlayed: 12600,
-      currentStreak: 12,
-      bestStreak: 21,
-      averageAccuracyOctaves: 0.08,
-      rankTitle: 'Grandmaster of EQ'
-    },
-    modeStats: {
-      peak_master: {
-        totalScore: 2850000,
-        roundsPlayed: 3800,
-        currentStreak: 8,
-        bestStreak: 19,
-        averageAccuracyOctaves: 0.07,
-        rankTitle: 'Grandmaster of EQ'
-      },
-      filter_doctor: {
-        totalScore: 2400000,
-        roundsPlayed: 3200,
-        currentStreak: 6,
-        bestStreak: 17,
-        averageAccuracyOctaves: 0.08,
-        rankTitle: 'Grandmaster of EQ'
-      },
-      pan_master: {
-        totalScore: 1600000,
-        roundsPlayed: 2100,
-        currentStreak: 5,
-        bestStreak: 14,
-        averageAccuracyOctaves: 0.08,
-        rankTitle: 'Spectral Maestro'
-      },
-      db_master: {
-        totalScore: 1400000,
-        roundsPlayed: 1900,
-        currentStreak: 7,
-        bestStreak: 15,
-        averageAccuracyOctaves: 0.09,
-        rankTitle: 'Spectral Maestro'
-      },
-      tye_match: {
-        totalScore: 1200000,
-        roundsPlayed: 1600,
-        currentStreak: 4,
-        bestStreak: 12,
-        averageAccuracyOctaves: 0.09,
-        rankTitle: 'Spectral Maestro'
-      }
-    },
-    history: [],
-    dailyUsage: {
-      date: getTodayDateString(),
-      rounds: { peak_master: 0, filter_doctor: 0, tye_match: 0 }
-    }
-  },
-  {
-    id: 'classmate_sarah',
-    name: 'Sarah M. (Audio TA)',
-    password: 'demo',
-    avatarColor: 'from-purple-500 to-pink-600',
-    createdAt: Date.now() - 86400000 * 200,
-    cohortYear: '2026',
-    defaultTrack: 'electronic_pop',
-    stats: {
-      totalScore: 6350000,
-      roundsPlayed: 8200,
-      currentStreak: 8,
-      bestStreak: 14,
-      averageAccuracyOctaves: 0.12,
-      rankTitle: 'Frequency Adept'
-    },
-    modeStats: {
-      filter_doctor: {
-        totalScore: 2100000,
-        roundsPlayed: 2700,
-        currentStreak: 7,
-        bestStreak: 14,
-        averageAccuracyOctaves: 0.09,
-        rankTitle: 'Spectral Maestro'
-      },
-      peak_master: {
-        totalScore: 1750000,
-        roundsPlayed: 2300,
-        currentStreak: 5,
-        bestStreak: 12,
-        averageAccuracyOctaves: 0.11,
-        rankTitle: 'Spectral Maestro'
-      },
-      db_master: {
-        totalScore: 1100000,
-        roundsPlayed: 1400,
-        currentStreak: 4,
-        bestStreak: 10,
-        averageAccuracyOctaves: 0.13,
-        rankTitle: 'Frequency Virtuoso'
-      },
-      tye_match: {
-        totalScore: 850000,
-        roundsPlayed: 1100,
-        currentStreak: 3,
-        bestStreak: 9,
-        averageAccuracyOctaves: 0.13,
-        rankTitle: 'Frequency Virtuoso'
-      },
-      pan_master: {
-        totalScore: 550000,
-        roundsPlayed: 700,
-        currentStreak: 4,
-        bestStreak: 8,
-        averageAccuracyOctaves: 0.14,
-        rankTitle: 'Frequency Adept'
-      }
-    },
-    history: [],
-    dailyUsage: {
-      date: getTodayDateString(),
-      rounds: { peak_master: 15, filter_doctor: 12, tye_match: 10, pan_master: 0 }
-    }
-  },
-  {
-    id: 'classmate_marcus',
-    name: 'Marcus K.',
-    password: 'demo',
-    avatarColor: 'from-cyan-500 to-blue-600',
-    createdAt: Date.now() - 86400000 * 4,
-    cohortYear: 'Class of 2026',
-    defaultTrack: 'alt_rock',
-    stats: {
-      totalScore: 4620000,
-      roundsPlayed: 6100,
-      currentStreak: 5,
-      bestStreak: 9,
-      averageAccuracyOctaves: 0.24,
-      rankTitle: 'Balance Specialist'
-    },
-    modeStats: {
-      pan_master: {
-        totalScore: 1550000,
-        roundsPlayed: 2050,
-        currentStreak: 6,
-        bestStreak: 11,
-        averageAccuracyOctaves: 0.18,
-        rankTitle: 'Spectral Maestro'
-      },
-      peak_master: {
-        totalScore: 1250000,
-        roundsPlayed: 1650,
-        currentStreak: 5,
-        bestStreak: 8,
-        averageAccuracyOctaves: 0.22,
-        rankTitle: 'Spectral Maestro'
-      },
-      filter_doctor: {
-        totalScore: 820000,
-        roundsPlayed: 1100,
-        currentStreak: 4,
-        bestStreak: 7,
-        averageAccuracyOctaves: 0.25,
-        rankTitle: 'Frequency Virtuoso'
-      },
-      db_master: {
-        totalScore: 600000,
-        roundsPlayed: 800,
-        currentStreak: 3,
-        bestStreak: 6,
-        averageAccuracyOctaves: 0.27,
-        rankTitle: 'Frequency Adept'
-      },
-      tye_match: {
-        totalScore: 400000,
-        roundsPlayed: 500,
-        currentStreak: 2,
-        bestStreak: 5,
-        averageAccuracyOctaves: 0.28,
-        rankTitle: 'Balance Specialist'
-      }
-    },
-    history: [],
-    dailyUsage: {
-      date: getTodayDateString(),
-      rounds: { peak_master: 18, filter_doctor: 10, tye_match: 7, pan_master: 0 }
-    }
-  },
-  {
-    id: 'classmate_liam',
-    name: 'Liam Chen',
-    password: 'demo',
-    avatarColor: 'from-amber-500 to-orange-600',
-    createdAt: Date.now() - 86400000 * 3,
-    cohortYear: 'Class of 2026',
-    defaultTrack: 'hip_hop',
-    stats: {
-      totalScore: 2150000,
-      roundsPlayed: 2800,
-      currentStreak: 4,
-      bestStreak: 6,
-      averageAccuracyOctaves: 0.38,
-      rankTitle: 'Spectral Apprentice'
-    },
-    modeStats: {
-      db_master: {
-        totalScore: 750000,
-        roundsPlayed: 980,
-        currentStreak: 4,
-        bestStreak: 7,
-        averageAccuracyOctaves: 0.32,
-        rankTitle: 'Frequency Virtuoso'
-      },
-      peak_master: {
-        totalScore: 550000,
-        roundsPlayed: 720,
-        currentStreak: 3,
-        bestStreak: 5,
-        averageAccuracyOctaves: 0.35,
-        rankTitle: 'Frequency Adept'
-      },
-      filter_doctor: {
-        totalScore: 420000,
-        roundsPlayed: 550,
-        currentStreak: 2,
-        bestStreak: 4,
-        averageAccuracyOctaves: 0.38,
-        rankTitle: 'Balance Specialist'
-      },
-      tye_match: {
-        totalScore: 250000,
-        roundsPlayed: 320,
-        currentStreak: 2,
-        bestStreak: 4,
-        averageAccuracyOctaves: 0.42,
-        rankTitle: 'Tone Shaper'
-      },
-      pan_master: {
-        totalScore: 180000,
-        roundsPlayed: 230,
-        currentStreak: 1,
-        bestStreak: 3,
-        averageAccuracyOctaves: 0.45,
-        rankTitle: 'Audio Apprentice'
-      }
-    },
-    history: [],
-    dailyUsage: {
-      date: getTodayDateString(),
-      rounds: { peak_master: 10, filter_doctor: 6, tye_match: 4, pan_master: 0 }
-    }
-  },
-  {
-    id: 'classmate_emma',
-    name: 'Emma Watson',
-    password: 'demo',
-    avatarColor: 'from-emerald-500 to-teal-600',
-    createdAt: Date.now() - 86400000 * 2,
-    cohortYear: 'Class of 2026',
-    defaultTrack: 'dance_pop',
-    stats: {
-      totalScore: 680000,
-      roundsPlayed: 910,
-      currentStreak: 2,
-      bestStreak: 5,
-      averageAccuracyOctaves: 0.45,
-      rankTitle: 'Patchbay Assistant'
-    },
-    modeStats: {
-      tye_match: {
-        totalScore: 220000,
-        roundsPlayed: 290,
-        currentStreak: 3,
-        bestStreak: 5,
-        averageAccuracyOctaves: 0.40,
-        rankTitle: 'Tone Shaper'
-      },
-      peak_master: {
-        totalScore: 180000,
-        roundsPlayed: 240,
-        currentStreak: 2,
-        bestStreak: 4,
-        averageAccuracyOctaves: 0.44,
-        rankTitle: 'Audio Apprentice'
-      },
-      filter_doctor: {
-        totalScore: 140000,
-        roundsPlayed: 190,
-        currentStreak: 2,
-        bestStreak: 3,
-        averageAccuracyOctaves: 0.46,
-        rankTitle: 'Audio Apprentice'
-      },
-      pan_master: {
-        totalScore: 80000,
-        roundsPlayed: 110,
-        currentStreak: 1,
-        bestStreak: 3,
-        averageAccuracyOctaves: 0.48,
-        rankTitle: 'Patchbay Assistant'
-      },
-      db_master: {
-        totalScore: 60000,
-        roundsPlayed: 80,
-        currentStreak: 1,
-        bestStreak: 2,
-        averageAccuracyOctaves: 0.50,
-        rankTitle: 'Patchbay Assistant'
-      }
-    },
-    history: [],
-    dailyUsage: {
-      date: getTodayDateString(),
-      rounds: { peak_master: 7, filter_doctor: 4, tye_match: 2, pan_master: 0 }
-    }
-  }
-];
+// Monday 19 October 2026 at 06:00:00 BST timestamp (Clean launch cutoff)
+export const PRE_LAUNCH_WIPE_TIMESTAMP = 1792386000000;
+
+export function isPreLaunchPeriod(): boolean {
+  return Date.now() < PRE_LAUNCH_WIPE_TIMESTAMP;
+}
+
+// Default initial classmates (Empty so only real students populate the roster)
+const DEFAULT_CLASSMATES: StudentProfile[] = [];
+
+export function purgePreLaunchStorage(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY_PROFILES);
+    localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+  } catch {}
+}
 
 export function getStoredProfiles(): Record<string, StudentProfile> {
   try {
+    // If pre-launch period is active, actively wipe any local storage test accounts
+    if (isPreLaunchPeriod()) {
+      purgePreLaunchStorage();
+      return {};
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY_PROFILES);
     if (!raw) {
-      // Seed initial classmates
-      const initialMap: Record<string, StudentProfile> = {};
-      DEFAULT_CLASSMATES.forEach(c => {
-        initialMap[c.id] = c;
-      });
-      localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(initialMap));
-      return initialMap;
+      return {};
     }
-    const parsed = JSON.parse(raw);
-    let needsSave = false;
-    DEFAULT_CLASSMATES.forEach(c => {
-      if (parsed[c.id] && (!parsed[c.id].modeStats || Object.keys(parsed[c.id].modeStats).length === 0)) {
-        parsed[c.id].modeStats = c.modeStats;
-        needsSave = true;
+    const parsed: Record<string, StudentProfile> = JSON.parse(raw);
+    let modified = false;
+
+    for (const id of Object.keys(parsed)) {
+      const p = parsed[id];
+      // Strip legacy mock classmates and any pre-launch test accounts
+      if (id.startsWith("classmate_") || !p.createdAt || p.createdAt < PRE_LAUNCH_WIPE_TIMESTAMP) {
+        delete parsed[id];
+        modified = true;
       }
-    });
-    if (needsSave) {
+    }
+
+    if (modified) {
       localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(parsed));
+      const activeId = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
+      if (activeId && !parsed[activeId]) {
+        localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
+      }
     }
     return parsed;
   } catch {

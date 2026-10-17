@@ -12,7 +12,8 @@ import {
   query,
   orderBy,
   limit,
-  onSnapshot
+  onSnapshot,
+  deleteDoc
 } from 'firebase/firestore';
 import { StudentProfile, LeaderboardEntry, DailyUsage, getTodayDateString, LeaderboardScope, getStudentModeStats, AppTheme } from '../utils/studentStorage';
 import { validateName } from '../utils/nameValidator';
@@ -394,6 +395,49 @@ export async function cloudUpdateStudentTheme(
   }
 }
 
+// Pre-launch wipe threshold: Monday 19 October 2026 at 06:00:00 BST
+export const PRE_LAUNCH_WIPE_TIMESTAMP = 1792386000000;
+
+export function isPreLaunchPeriod(): boolean {
+  return Date.now() < PRE_LAUNCH_WIPE_TIMESTAMP;
+}
+
+/**
+ * Actively purge any pre-launch test accounts and score entries from Firestore.
+ * Active automatically during pre-launch (prior to Mon 19 Oct 2026 06:00 BST).
+ */
+export async function cloudPurgePreLaunchData(): Promise<{ deletedStudents: number; deletedScores: number }> {
+  const firestore = getFirebaseDb();
+  if (!firestore) return { deletedStudents: 0, deletedScores: 0 };
+
+  let deletedStudents = 0;
+  let deletedScores = 0;
+
+  try {
+    const studentsSnap = await getDocs(collection(firestore, 'students'));
+    for (const d of studentsSnap.docs) {
+      const data = d.data();
+      if (Date.now() < PRE_LAUNCH_WIPE_TIMESTAMP || !data.createdAt || data.createdAt < PRE_LAUNCH_WIPE_TIMESTAMP) {
+        await deleteDoc(d.ref);
+        deletedStudents++;
+      }
+    }
+
+    const scoresSnap = await getDocs(collection(firestore, 'scores'));
+    for (const d of scoresSnap.docs) {
+      const data = d.data();
+      if (Date.now() < PRE_LAUNCH_WIPE_TIMESTAMP || !data.timestamp || data.timestamp < PRE_LAUNCH_WIPE_TIMESTAMP) {
+        await deleteDoc(d.ref);
+        deletedScores++;
+      }
+    }
+  } catch (e) {
+    console.warn("Notice in cloudPurgePreLaunchData:", e);
+  }
+
+  return { deletedStudents, deletedScores };
+}
+
 /**
  * Fetch live classroom leaderboard across all cohorts (including alumni)
  */
@@ -405,12 +449,24 @@ export async function cloudFetchLeaderboard(
   if (!firestore) return [];
 
   try {
+    // During pre-launch (prior to Monday 19 Oct 2026 06:00 BST), continuously sweep all test players
+    if (isPreLaunchPeriod()) {
+      await cloudPurgePreLaunchData();
+      return mergeGlynJohnsIntoLeaderboard([], scope, activeStudentId);
+    }
+
     const q = query(collection(firestore, 'students'), orderBy('stats.totalScore', 'desc'));
     const querySnapshot = await getDocs(q);
 
     const entries: LeaderboardEntry[] = [];
-    querySnapshot.forEach((doc) => {
+    for (const doc of querySnapshot.docs) {
       const p = doc.data() as StudentProfile & { cohortYear?: string };
+      // Safety: purge any account created before launch
+      if (p.createdAt && p.createdAt < PRE_LAUNCH_WIPE_TIMESTAMP) {
+        await deleteDoc(doc.ref);
+        continue;
+      }
+
       const userStats = (scope === 'all' || !p.modeStats)
         ? p.stats
         : (p.modeStats[scope as GameMode] || getStudentModeStats(p, scope as GameMode));
@@ -429,7 +485,7 @@ export async function cloudFetchLeaderboard(
         cohortYear: p.cohortYear || 'Class of 2026',
         scope
       });
-    });
+    }
 
     if (entries.length > 0) {
       return mergeGlynJohnsIntoLeaderboard(entries, scope, activeStudentId);
@@ -440,9 +496,13 @@ export async function cloudFetchLeaderboard(
     const scoresSnapshot = await getDocs(scoresQuery);
     const scoreMap = new Map<string, LeaderboardEntry>();
 
-    scoresSnapshot.forEach(docSnap => {
+    for (const docSnap of scoresSnapshot.docs) {
       const data = docSnap.data();
-      if (scope !== 'all' && data.mode !== scope) return;
+      if (data.timestamp && data.timestamp < PRE_LAUNCH_WIPE_TIMESTAMP) {
+        await deleteDoc(docSnap.ref);
+        continue;
+      }
+      if (scope !== 'all' && data.mode !== scope) continue;
       const studentId = data.studentId || docSnap.id;
       const nickname = data.nickname || 'Student';
       const score = Number(data.score) || 0;
@@ -462,7 +522,7 @@ export async function cloudFetchLeaderboard(
           scope
         });
       }
-    });
+    }
 
     const fallbackEntries = Array.from(scoreMap.values());
     return mergeGlynJohnsIntoLeaderboard(fallbackEntries, scope, activeStudentId);

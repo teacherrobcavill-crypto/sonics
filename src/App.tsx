@@ -42,17 +42,28 @@ import {
   THEME_OPTIONS,
   getSavedTheme,
   saveTheme,
-  updateStudentTheme
+  updateStudentTheme,
+  purgePreLaunchStorage,
+  isPreLaunchPeriod
 } from './utils/studentStorage';
 import {
   cloudUpdateStudentDefaultTrack,
   cloudUpdateStudentTheme,
-  isFirebaseReady
+  isFirebaseReady,
+  cloudPurgePreLaunchData
 } from './services/firebase';
 
 type AppTab = GameMode | 'leaderboard';
 
 export const App: React.FC = () => {
+  useEffect(() => {
+    if (isPreLaunchPeriod()) {
+      purgePreLaunchStorage();
+      if (isFirebaseReady()) {
+        cloudPurgePreLaunchData().catch(() => {});
+      }
+    }
+  }, []);
   const [activeTab, setActiveTab] = useState<AppTab>('peak_master');
   const [showStats, setShowStats] = useState(false);
   const [latestResult, setLatestResult] = useState<RoundResult | null>(null);
