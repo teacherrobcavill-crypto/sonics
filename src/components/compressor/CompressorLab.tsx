@@ -12,6 +12,7 @@ import { VuNeedleMeter } from './VuNeedleMeter';
 import { DualBarMeterView } from './DualBarMeterView';
 import { WaveformScopeView } from './WaveformScopeView';
 import { RotaryKnob } from './RotaryKnob';
+import { AdsrEnvelopeCard } from './AdsrEnvelopeCard';
 import { CompressorDiagnosticsHUD } from './CompressorDiagnosticsHUD';
 import {
   Play,
@@ -333,87 +334,115 @@ export const CompressorLab: React.FC = () => {
         <div className="absolute bottom-3 left-3 w-3 h-3 rounded-full bg-slate-700/60 border border-slate-600 flex items-center justify-center text-[9px] font-mono text-slate-400">+</div>
         <div className="absolute bottom-3 right-3 w-3 h-3 rounded-full bg-slate-700/60 border border-slate-600 flex items-center justify-center text-[9px] font-mono text-slate-400">+</div>
 
-        {/* Main Hardware Display & 4 Precision Controls */}
+        {/* Main Hardware Console Grid: Left ADSR (Input), Center (VU/Bars/Wave), Right ADSR (Output) */}
         <div className="flex flex-col space-y-6">
-          {/* Display Header Mode Tabs & Bypass */}
-          <div className="flex items-start justify-between px-2">
-            <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-1.5 pt-1">
-              <Volume2 className="w-3.5 h-3.5 text-studio-accent" />
-              <span>DYNAMIC GAIN REDUCTION MONITOR</span>
-            </span>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
+            
+            {/* Left Column: Input ADSR Envelope (Before Compression) */}
+            <div className="lg:col-span-3">
+              <AdsrEnvelopeCard
+                mode="input"
+                params={params}
+                stem={selectedStem}
+                telemetry={telemetry}
+              />
+            </div>
 
-            {/* Mode Tabs and Bypass stacked on the right */}
-            <div className="flex flex-col items-end gap-2">
-              {/* 3-Mode Selector Tabs */}
-              <div className="flex p-0.5 bg-studio-950 rounded-xl border border-studio-800 text-[10px] font-mono font-bold">
-                <button
-                  type="button"
-                  onClick={() => setDisplayMode('vu')}
-                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                    displayMode === 'vu' ? 'bg-amber-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Gauge className="w-3 h-3" />
-                  <span>VU</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDisplayMode('bars')}
-                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                    displayMode === 'bars' ? 'bg-cyan-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <BarChart2 className="w-3 h-3" />
-                  <span>BARS</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDisplayMode('wave')}
-                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                    displayMode === 'wave' ? 'bg-studio-accent text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Activity className="w-3 h-3" />
-                  <span>WAVE</span>
-                </button>
+            {/* Center Column: Tri-Mode VU Display Screen & Mode Tabs */}
+            <div className="lg:col-span-6 flex flex-col justify-between space-y-3 bg-studio-950/40 p-2 sm:p-3 rounded-2xl border border-studio-800/80">
+              {/* Display Header Mode Tabs & Bypass */}
+              <div className="flex items-start justify-between px-1">
+                <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-1.5 pt-1">
+                  <Volume2 className="w-3.5 h-3.5 text-studio-accent" />
+                  <span className="truncate">GAIN REDUCTION</span>
+                </span>
+
+                {/* Mode Tabs and Bypass stacked on the right */}
+                <div className="flex flex-col items-end gap-1.5">
+                  {/* 3-Mode Selector Tabs */}
+                  <div className="flex p-0.5 bg-studio-950 rounded-xl border border-studio-800 text-[10px] font-mono font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setDisplayMode('vu')}
+                      className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                        displayMode === 'vu' ? 'bg-amber-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Gauge className="w-3 h-3" />
+                      <span>VU</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDisplayMode('bars')}
+                      className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                        displayMode === 'bars' ? 'bg-cyan-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <BarChart2 className="w-3 h-3" />
+                      <span>BARS</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDisplayMode('wave')}
+                      className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                        displayMode === 'wave' ? 'bg-studio-accent text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Activity className="w-3 h-3" />
+                      <span>WAVE</span>
+                    </button>
+                  </div>
+
+                  {/* Bypass Button directly underneath VU / BARS / WAVE options */}
+                  <button
+                    type="button"
+                    onClick={() => updateParam('bypassed', !params.bypassed)}
+                    className={`w-full py-0.5 px-2 rounded-lg text-[10px] font-mono font-bold flex items-center justify-center space-x-1.5 transition-all border cursor-pointer ${
+                      params.bypassed
+                        ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-600/30 ring-1 ring-rose-400'
+                        : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white hover:border-slate-700'
+                    }`}
+                  >
+                    <Power className="w-3 h-3" />
+                    <span>{params.bypassed ? 'BYPASS (ON)' : 'BYPASS'}</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Bypass Button directly underneath VU / BARS / WAVE options */}
-              <button
-                type="button"
-                onClick={() => updateParam('bypassed', !params.bypassed)}
-                className={`w-full py-1 px-3 rounded-lg text-[10px] font-mono font-bold flex items-center justify-center space-x-1.5 transition-all border cursor-pointer ${
-                  params.bypassed
-                    ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-600/30 ring-1 ring-rose-400'
-                    : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white hover:border-slate-700'
-                }`}
-              >
-                <Power className="w-3 h-3" />
-                <span>{params.bypassed ? 'BYPASS (ON)' : 'BYPASS'}</span>
-              </button>
+              {/* Tri-Mode Display Screen */}
+              <div className="h-48 sm:h-56 w-full flex items-center justify-center">
+                {displayMode === 'vu' && (
+                  <VuNeedleMeter
+                    needlePosition={telemetry.vuNeedlePosition}
+                    isBypassed={params.bypassed}
+                  />
+                )}
+                {displayMode === 'bars' && (
+                  <DualBarMeterView
+                    telemetry={telemetry}
+                    isBypassed={params.bypassed}
+                  />
+                )}
+                {displayMode === 'wave' && (
+                  <WaveformScopeView
+                    telemetry={telemetry}
+                    isBypassed={params.bypassed}
+                  />
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Tri-Mode Display Screen */}
-          <div className="h-56 sm:h-64 w-full flex items-center justify-center">
-            {displayMode === 'vu' && (
-              <VuNeedleMeter
-                needlePosition={telemetry.vuNeedlePosition}
-                isBypassed={params.bypassed}
-              />
-            )}
-            {displayMode === 'bars' && (
-              <DualBarMeterView
+            {/* Right Column: Output ADSR Envelope (Post Compression with Real-Time Warnings) */}
+            <div className="lg:col-span-3">
+              <AdsrEnvelopeCard
+                mode="output"
+                params={params}
+                stem={selectedStem}
                 telemetry={telemetry}
-                isBypassed={params.bypassed}
               />
-            )}
-            {displayMode === 'wave' && (
-              <WaveformScopeView
-                telemetry={telemetry}
-                isBypassed={params.bypassed}
-              />
-            )}
+            </div>
+
           </div>
 
           {/* 4 Precision Rotary Knobs */}
