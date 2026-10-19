@@ -9,6 +9,7 @@ interface RotaryKnobProps {
   defaultValue?: number;
   unit?: string;
   isLogarithmic?: boolean;
+  isRatioCurve?: boolean;
   color?: string;
   onChange: (val: number) => void;
   formatValue?: (val: number) => string;
@@ -23,6 +24,7 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
   defaultValue,
   unit = '',
   isLogarithmic = false,
+  isRatioCurve = false,
   color = '#00f0ff',
   onChange,
   formatValue
@@ -34,24 +36,42 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
 
   // Map value to normalized [0, 1]
   const toNormalized = useCallback((v: number): number => {
+    if (isRatioCurve) {
+      if (v >= 50) return 1.0;
+      if (v > 8.0) {
+        const t = Math.max(0, Math.min(1, (v - 8.0) / 12.0));
+        return 0.5 + t * 0.44; // 8:1 to 20:1 covers 0.50 to 0.94
+      }
+      const t = Math.max(0, Math.min(1, (v - 1.0) / 7.0));
+      return t * 0.5; // 1:1 to 8:1 covers the first half (0 to 0.5)
+    }
     if (isLogarithmic) {
       const minLog = Math.log(Math.max(0.0001, min));
       const maxLog = Math.log(max);
       return Math.max(0, Math.min(1, (Math.log(Math.max(0.0001, v)) - minLog) / (maxLog - minLog)));
     }
     return Math.max(0, Math.min(1, (v - min) / (max - min)));
-  }, [isLogarithmic, min, max]);
+  }, [isLogarithmic, isRatioCurve, min, max]);
 
   // Map normalized [0, 1] to value
   const fromNormalized = useCallback((n: number): number => {
     const clamped = Math.max(0, Math.min(1, n));
+    if (isRatioCurve) {
+      if (clamped >= 0.94) return 100.0; // Brickwall limiting at very end
+      if (clamped > 0.5) {
+        const t = (clamped - 0.5) / 0.44;
+        return 8.0 + t * 12.0; // 8:1 to 20:1
+      }
+      const t = clamped / 0.5;
+      return 1.0 + t * 7.0; // 1:1 to 8:1
+    }
     if (isLogarithmic) {
       const minLog = Math.log(Math.max(0.0001, min));
       const maxLog = Math.log(max);
       return Math.exp(minLog + clamped * (maxLog - minLog));
     }
     return min + clamped * (max - min);
-  }, [isLogarithmic, min, max]);
+  }, [isLogarithmic, isRatioCurve, min, max]);
 
   const normalized = toNormalized(value);
   // -135 deg to +135 deg sweep (270 deg total)
@@ -93,7 +113,15 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
     const newNorm = Math.max(0, Math.min(1, startNormRef.current + deltaY * speed));
 
     let newVal = fromNormalized(newNorm);
-    if (step) {
+    if (isRatioCurve) {
+      if (newVal >= 50) {
+        newVal = 100.0;
+      } else if (newVal > 8.0) {
+        newVal = Math.round(newVal * 2) / 2; // 0.5 step for higher ratios
+      } else {
+        newVal = Math.round(newVal * 10) / 10; // 0.1 step for subtle ratios
+      }
+    } else if (step) {
       newVal = Math.round(newVal / step) * step;
     }
     onChange(Math.max(min, Math.min(max, newVal)));

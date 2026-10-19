@@ -491,19 +491,19 @@ export const CompressorLab: React.FC = () => {
               label="Ratio"
               value={params.ratio}
               min={1.0}
-              max={20.0}
-              step={0.1}
+              max={100.0}
+              isRatioCurve
               defaultValue={4.0}
               color="#38bdf8"
               onChange={v => updateParam('ratio', v)}
-              formatValue={v => (v >= 20 ? '∞:1' : `${v.toFixed(1)}:1`)}
+              formatValue={v => (v >= 50 ? '∞:1 Limit' : `${v.toFixed(1)}:1`)}
             />
 
             <RotaryKnob
               label="Attack"
               value={params.attackMs}
               min={0.1}
-              max={100.0}
+              max={200.0}
               step={0.1}
               isLogarithmic
               defaultValue={10.0}

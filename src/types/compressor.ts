@@ -5,8 +5,8 @@
 
 export interface CompressorParams {
   thresholdDb: number;       // -60.0 dB to 0.0 dBFS (default: -18.0)
-  ratio: number;             // 1.0 to 20.0 (default: 4.0)
-  attackMs: number;          // 0.1 ms to 100.0 ms (default: 10.0)
+  ratio: number;             // 1.0 to 100.0 (default: 4.0, >= 50 is brickwall limiting)
+  attackMs: number;          // 0.1 ms to 200.0 ms (default: 10.0)
   releaseMs: number;         // 10.0 ms to 1000.0 ms (default: 100.0)
   kneeDb: number;            // 0.0 dB to 24.0 dB (default: 4.0 dB quadratic soft-knee)
   autoGain: boolean;         // Auto-gain compensation mode
