@@ -405,8 +405,10 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
                 type="file"
                 ref={modalFileInputRef}
                 onChange={(e) => handleModalFileUpload(e, false)}
-                accept="audio/*"
-                className="hidden"
+                accept="audio/*,.mp3,.wav,.wave,.ogg,.flac,.m4a,.aac,.aif,.aiff"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
               />
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-0.5">
                 {TRACK_OPTIONS.map(opt => {
@@ -697,8 +699,10 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
                 type="file"
                 ref={modalSessionFileInputRef}
                 onChange={(e) => handleModalFileUpload(e, true)}
-                accept="audio/*"
-                className="hidden"
+                accept="audio/*,.mp3,.wav,.wave,.ogg,.flac,.m4a,.aac,.aif,.aiff"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
               />
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {TRACK_OPTIONS.map(opt => {

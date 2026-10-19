@@ -239,6 +239,7 @@ export const StemBalanceConsole: React.FC<StemBalanceConsoleProps> = ({
     initRound();
     return () => {
       audioEngine.stop();
+      audioEngine.setStemMode(false);
     };
   }, [initRound]);
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Volume2, VolumeX, Upload, Music, Radio, Disc, Zap, Flame, Sparkles, Activity, Star } from 'lucide-react';
+import { Volume2, VolumeX, Upload, Music, Radio, Disc, Zap, Flame, Sparkles, Activity, Star, X } from 'lucide-react';
 import { audioEngine } from '../audio/AudioEngine';
 import { AudioSourceType } from '../types';
 import { StudentProfile } from '../utils/studentStorage';
@@ -36,6 +36,7 @@ export const AudioTransport: React.FC<AudioTransportProps> = ({
   const [internalVolume, setInternalVolume] = useState(0.75);
   const [internalIsMuted, setInternalIsMuted] = useState(false);
   const [customFileName, setCustomFileName] = useState<string | null>(() => audioEngine.getCustomFileName());
+  const [isDecodingAudio, setIsDecodingAudio] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const volume = controlledVolume !== undefined ? controlledVolume : internalVolume;
@@ -80,9 +81,11 @@ export const AudioTransport: React.FC<AudioTransportProps> = ({
   };
 
   const handleCustomAudioClick = () => {
-    if (audioEngine.hasCustomAudio()) {
+    // If user has custom audio loaded and is currently on another source, switch back to it
+    if (activeSource !== 'custom_file' && audioEngine.hasCustomAudio()) {
       handleSourceChange('custom_file');
     } else {
+      // If already on custom audio or no audio loaded yet, trigger file picker
       fileInputRef.current?.click();
     }
   };
@@ -91,13 +94,16 @@ export const AudioTransport: React.FC<AudioTransportProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     try {
+      setIsDecodingAudio(true);
       const name = await audioEngine.loadCustomAudioFile(file);
       setCustomFileName(name);
       setActiveSource('custom_file');
-    } catch (err) {
+    } catch (err: unknown) {
       console.error("Failed to load audio file", err);
-      alert("Failed to decode audio file. Please try a standard MP3 or WAV file.");
+      const msg = err instanceof Error ? err.message : "Failed to decode audio file. Please try a standard MP3 or WAV file.";
+      alert(msg);
     } finally {
+      setIsDecodingAudio(false);
       if (e.target) e.target.value = '';
     }
   };
@@ -162,45 +168,67 @@ export const AudioTransport: React.FC<AudioTransportProps> = ({
             );
           })}
 
-          {/* Custom File Upload / Select Button */}
+          {/* Custom File Upload Input (Off-screen sr-only so Safari / iOS security allows .click()) */}
           <input
             type="file"
             ref={fileInputRef}
             onChange={handleFileUpload}
-            accept="audio/*"
-            className="hidden"
+            accept="audio/*,.mp3,.wav,.wave,.ogg,.flac,.m4a,.aac,.aif,.aiff"
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
           />
           <div className="flex items-center flex-shrink-0">
             <button
+              type="button"
               onClick={handleCustomAudioClick}
+              disabled={isDecodingAudio}
               className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 border border-dashed flex-shrink-0 cursor-pointer ${
                 activeSource === 'custom_file'
                   ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 font-semibold shadow'
                   : 'border-studio-700 text-slate-400 hover:text-slate-200 hover:border-slate-500'
               }`}
               title={
-                customFileName
-                  ? `Select "${customFileName}"`
+                isDecodingAudio
+                  ? "Decoding audio file..."
+                  : activeSource === 'custom_file'
+                  ? `Active: "${customFileName || 'Custom Track'}" (Click to choose a different file)`
+                  : customFileName
+                  ? `Switch back to "${customFileName}"`
                   : "Load your own reference track (MP3, WAV, FLAC, OGG)"
               }
             >
-              <Upload className="w-3.5 h-3.5" />
-              <span className="truncate max-w-[100px]">
-                {customFileName ? customFileName : "Load Audio"}
+              <Upload className={`w-3.5 h-3.5 ${isDecodingAudio ? 'animate-bounce text-cyan-400' : ''}`} />
+              <span className="truncate max-w-[120px]">
+                {isDecodingAudio ? "Decoding..." : (customFileName || "Load Audio")}
               </span>
             </button>
             {customFileName && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  fileInputRef.current?.click();
-                }}
-                className="ml-1 p-1 rounded-md text-slate-400 hover:text-cyan-300 hover:bg-studio-800 transition-colors cursor-pointer"
-                title="Upload a different audio file"
-              >
-                <Upload className="w-3 h-3" />
-              </button>
+              <div className="flex items-center ml-0.5 space-x-0.5">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  className="p-1 rounded-md text-slate-400 hover:text-cyan-300 hover:bg-studio-800 transition-colors cursor-pointer"
+                  title="Upload a different audio file"
+                >
+                  <Upload className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    await audioEngine.clearCustomAudio();
+                    setCustomFileName(null);
+                  }}
+                  className="p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-studio-800 transition-colors cursor-pointer"
+                  title="Eject / Clear custom audio"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
             )}
           </div>
         </div>

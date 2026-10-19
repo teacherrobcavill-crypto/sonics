@@ -1,4 +1,9 @@
 import { AudioSourceType, FilterParams, FilterType, StemType, StemMixBalance } from '../types';
+import {
+  saveCustomAudioToStorage,
+  getCustomAudioFromStorage,
+  clearCustomAudioFromStorage
+} from '../utils/audioStorage';
 import { createPinkNoiseBuffer, createWhiteNoiseBuffer } from './NoiseGenerator';
 import {
   createDrumLoopBuffer,
@@ -165,7 +170,16 @@ export class AudioEngine {
   // State change listener
   private onStateChangeCallbacks: Array<(isPlaying: boolean, mode: ListeningMode, sourceType: AudioSourceType) => void> = [];
 
-  constructor() {}
+  constructor() {
+    if (typeof window !== 'undefined') {
+      getCustomAudioFromStorage().then(stored => {
+        if (stored && stored.name) {
+          this.customFileName = stored.name;
+          this.notifyState();
+        }
+      }).catch(() => {});
+    }
+  }
 
   public async init(): Promise<void> {
     if (this.isInitialized && this.ctx) {
@@ -337,6 +351,70 @@ export class AudioEngine {
     this.isInitialized = true;
   }
 
+  /**
+   * Decodes raw audio ArrayBuffer with complete cross-browser robustness.
+   * Handles Safari WebKit buffer detaching, legacy callback APIs, and ensures
+   * the AudioContext is resumed before decoding.
+   */
+  public async safeDecodeAudioData(arrayBuffer: ArrayBuffer): Promise<AudioBuffer> {
+    if (!this.ctx) await this.init();
+    if (!this.ctx) throw new Error("AudioContext failed to initialize");
+
+    if (this.ctx.state === 'suspended') {
+      try {
+        await this.ctx.resume();
+      } catch (e) {
+        console.warn("AudioContext resume notice:", e);
+      }
+    }
+
+    // Clone the buffer to prevent WebKit detachment mutations if retried
+    const copy = arrayBuffer.slice(0);
+
+    return new Promise<AudioBuffer>((resolve, reject) => {
+      let settled = false;
+      try {
+        const promise = this.ctx!.decodeAudioData(
+          copy,
+          (decoded) => {
+            if (!settled) {
+              settled = true;
+              resolve(decoded);
+            }
+          },
+          (err) => {
+            if (!settled) {
+              settled = true;
+              reject(err || new Error("Browser audio decoder could not parse this audio file. Please ensure it is a standard MP3, WAV, or AAC file."));
+            }
+          }
+        );
+
+        if (promise && typeof promise.then === 'function') {
+          promise.then(
+            (decoded) => {
+              if (!settled) {
+                settled = true;
+                resolve(decoded);
+              }
+            },
+            (err) => {
+              if (!settled) {
+                settled = true;
+                reject(err || new Error("Browser audio decoder could not parse this audio file."));
+              }
+            }
+          );
+        }
+      } catch (e) {
+        if (!settled) {
+          settled = true;
+          reject(e);
+        }
+      }
+    });
+  }
+
   private async loadTrackFromUrl(url: string, fallbackLocalUrl?: string): Promise<AudioBuffer> {
     if (!this.ctx) await this.init();
     if (!this.ctx) throw new Error("AudioContext failed to initialize");
@@ -351,14 +429,14 @@ export class AudioEngine {
         throw new Error(`HTTP ${response.status} ${response.statusText}`);
       }
       const arrayBuffer = await response.arrayBuffer();
-      return await this.ctx.decodeAudioData(arrayBuffer);
+      return await this.safeDecodeAudioData(arrayBuffer);
     } catch (err) {
       if (fallbackLocalUrl) {
         console.warn(`Primary audio load failed from ${url}, attempting local fallback:`, err);
         const fallbackResp = await fetch(fallbackLocalUrl);
         if (fallbackResp.ok) {
           const fallbackArr = await fallbackResp.arrayBuffer();
-          return await this.ctx.decodeAudioData(fallbackArr);
+          return await this.safeDecodeAudioData(fallbackArr);
         }
       }
       throw err;
@@ -391,6 +469,21 @@ export class AudioEngine {
 
   public async setAudioSource(type: AudioSourceType): Promise<void> {
     this.currentSourceType = type;
+    this.pauseOffset = 0; // Reset offset on source change to prevent seek overflow
+
+    // If switching to custom audio or a track without stems, exit stem mode
+    if (type === 'custom_file' || !STEM_FOLDER_MAP[type]) {
+      this.isStemMode = false;
+    }
+
+    if (type === 'custom_file') {
+      if (!this.buffers.get('custom_file') && this.customBuffer) {
+        this.buffers.set('custom_file', this.customBuffer);
+      } else if (!this.hasCustomAudio()) {
+        await this.restoreCustomAudioFromStorage();
+      }
+    }
+
     if (this.isPlaying) {
       this.stop();
       await this.play();
@@ -403,12 +496,20 @@ export class AudioEngine {
     if (!this.ctx) throw new Error("AudioContext failed to initialize");
 
     const arrayBuffer = await file.arrayBuffer();
-    const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
+    const audioBuffer = await this.safeDecodeAudioData(arrayBuffer);
+
     this.customBuffer = audioBuffer;
     this.customFileName = file.name;
     this.buffers.set('custom_file', audioBuffer);
     this.monoBuffers.delete('custom_file');
+    this.isStemMode = false;
     this.currentSourceType = 'custom_file';
+    this.pauseOffset = 0;
+
+    // Asynchronously persist to IndexedDB so it survives page reloads and browser restarts
+    saveCustomAudioToStorage(file.name, file.type, arrayBuffer).catch(err => {
+      console.warn("Notice: Audio persistence error:", err);
+    });
 
     if (this.isPlaying) {
       this.stop();
@@ -417,6 +518,47 @@ export class AudioEngine {
     this.notifyState();
 
     return file.name;
+  }
+
+  /**
+   * Attempts to restore the previously uploaded custom audio file from IndexedDB.
+   */
+  public async restoreCustomAudioFromStorage(): Promise<boolean> {
+    if (this.customBuffer) return true;
+    try {
+      const stored = await getCustomAudioFromStorage();
+      if (!stored || !stored.data) return false;
+
+      if (!this.ctx) await this.init();
+      if (!this.ctx) return false;
+
+      const audioBuffer = await this.safeDecodeAudioData(stored.data);
+      this.customBuffer = audioBuffer;
+      this.customFileName = stored.name;
+      this.buffers.set('custom_file', audioBuffer);
+      this.monoBuffers.delete('custom_file');
+      this.notifyState();
+      return true;
+    } catch (e) {
+      console.warn("Notice: Could not restore stored custom audio:", e);
+      return false;
+    }
+  }
+
+  /**
+   * Clears custom audio from memory and browser IndexedDB storage.
+   */
+  public async clearCustomAudio(): Promise<void> {
+    this.customBuffer = null;
+    this.customFileName = null;
+    this.buffers.delete('custom_file');
+    this.monoBuffers.delete('custom_file');
+    await clearCustomAudioFromStorage();
+    if (this.currentSourceType === 'custom_file') {
+      await this.setAudioSource('dance_pop');
+    } else {
+      this.notifyState();
+    }
   }
 
   public getCustomFileName(): string | null {
@@ -447,6 +589,16 @@ export class AudioEngine {
     }
 
     let buffer = this.buffers.get(this.currentSourceType);
+    if (!buffer && this.currentSourceType === 'custom_file') {
+      if (this.customBuffer) {
+        buffer = this.customBuffer;
+        this.buffers.set('custom_file', buffer);
+      } else {
+        await this.restoreCustomAudioFromStorage();
+        buffer = this.customBuffer || this.buffers.get('custom_file');
+      }
+    }
+
     if (!buffer) {
       const trackUrl = AUDIO_TRACK_URLS[this.currentSourceType];
       if (trackUrl) {
@@ -467,6 +619,11 @@ export class AudioEngine {
       }
     }
 
+    if (!buffer) {
+      console.warn("Notice: No audio buffer available to play");
+      return;
+    }
+
     let activeBuffer = buffer;
     if (this.isMonoMode && buffer) {
       activeBuffer = this.getMonoBuffer(this.currentSourceType, buffer);
@@ -480,7 +637,9 @@ export class AudioEngine {
       this.currentSourceNode.connect(this.sourceOutGain);
     }
 
-    const offset = this.pauseOffset % buffer.duration;
+    const duration = (buffer && buffer.duration > 0) ? buffer.duration : 1;
+    const safePause = (typeof this.pauseOffset === 'number' && isFinite(this.pauseOffset) && this.pauseOffset >= 0) ? this.pauseOffset : 0;
+    const offset = safePause % duration;
     this.currentSourceNode.start(0, offset);
     this.startTime = this.ctx.currentTime - offset;
     this.isPlaying = true;
