@@ -146,15 +146,15 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       // Release density factor: slow release clamps continuously
       const etaRel = Math.pow(Math.max(10.0, this.releaseMs) / 100.0, 0.22);
       const predictedComp = this.avgGr300 * Math.max(0.4, Math.min(1.6, etaAtt * etaRel));
-      this.autoGainTargetDb = Math.min(24.0, predictedComp * 0.85);
+      this.autoGainTargetDb = Math.min(18.0, predictedComp * 0.90);
 
-      // Critically damped glide
+      // Critically damped glide: smooth 150ms time constant
       const diff = this.autoGainTargetDb - this.autoGainCurrentDb;
-      const step = Math.sign(diff) * Math.min(Math.abs(diff * 0.09), 0.70 / (this.fs / 60));
+      const step = Math.sign(diff) * Math.min(Math.abs(diff * 0.06), 0.50 / (this.fs / 60));
       this.autoGainCurrentDb += step;
       autoGainLinear = Math.pow(10.0, this.autoGainCurrentDb / 20.0);
     } else {
-      this.autoGainCurrentDb *= 0.95;
+      this.autoGainCurrentDb *= 0.92;
     }
 
     for (let i = 0; i < numSamples; ++i) {

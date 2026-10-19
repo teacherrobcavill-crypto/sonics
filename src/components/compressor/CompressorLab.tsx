@@ -13,6 +13,7 @@ import { DualBarMeterView } from './DualBarMeterView';
 import { WaveformScopeView } from './WaveformScopeView';
 import { RotaryKnob } from './RotaryKnob';
 import { AdsrEnvelopeCard } from './AdsrEnvelopeCard';
+import { CompressorPresetsCard } from './CompressorPresetsCard';
 import { CompressorDiagnosticsHUD } from './CompressorDiagnosticsHUD';
 import {
   Play,
@@ -24,7 +25,8 @@ import {
   Upload,
   Gauge,
   BarChart2,
-  Activity
+  Activity,
+  Sparkles
 } from 'lucide-react';
 
 export const CompressorLab: React.FC = () => {
@@ -32,6 +34,7 @@ export const CompressorLab: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedStem, setSelectedStem] = useState<CompressorStem>(COMPRESSOR_STEMS[0]);
   const [displayMode, setDisplayMode] = useState<CompressorDisplayMode>('vu');
+  const [activePresetId, setActivePresetId] = useState<string | null>(null);
   const [params, setParams] = useState<CompressorParams>({
     ...DEFAULT_COMPRESSOR_PARAMS,
     ...COMPRESSOR_STEMS[0].suggestedParams
@@ -156,6 +159,7 @@ export const CompressorLab: React.FC = () => {
   // Switch Stems
   const handleSelectStem = (stem: CompressorStem) => {
     setSelectedStem(stem);
+    setActivePresetId(null);
     const ctx = audioCtxRef.current;
     if (!ctx) return;
 
@@ -172,6 +176,14 @@ export const CompressorLab: React.FC = () => {
     if (isPlaying) {
       startPlayback();
     }
+  };
+
+  const handleApplyPreset = (presetParams: Partial<CompressorParams>, presetId: string) => {
+    setActivePresetId(presetId);
+    setParams(prev => ({
+      ...prev,
+      ...presetParams
+    }));
   };
 
   // Handle Custom Audio File Upload
@@ -339,26 +351,26 @@ export const CompressorLab: React.FC = () => {
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
             
-            {/* Left Column: Input ADSR Envelope (Before Compression) */}
+            {/* Left Column: Tailored Starting Point Presets */}
             <div className="lg:col-span-3 flex flex-col h-full">
-              <AdsrEnvelopeCard
-                mode="input"
-                params={params}
+              <CompressorPresetsCard
                 stem={selectedStem}
-                telemetry={telemetry}
+                currentParams={params}
+                onApplyPreset={handleApplyPreset}
+                activePresetId={activePresetId}
               />
             </div>
 
             {/* Center Column: Tri-Mode VU Display Screen & Mode Tabs */}
             <div className="lg:col-span-6 flex flex-col justify-between space-y-3 bg-studio-950/40 p-2 sm:p-3 rounded-2xl border border-studio-800/80">
-              {/* Display Header Mode Tabs & Bypass */}
+              {/* Display Header Mode Tabs & Controls */}
               <div className="flex items-start justify-between px-1">
                 <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-1.5 pt-1">
                   <Volume2 className="w-3.5 h-3.5 text-studio-accent" />
                   <span className="truncate">GAIN REDUCTION</span>
                 </span>
 
-                {/* Mode Tabs and Bypass stacked on the right */}
+                {/* Mode Tabs and Auto Level / Bypass stacked on the right */}
                 <div className="flex flex-col items-end gap-1.5">
                   {/* 3-Mode Selector Tabs */}
                   <div className="flex p-0.5 bg-studio-950 rounded-xl border border-studio-800 text-[10px] font-mono font-bold">
@@ -394,19 +406,35 @@ export const CompressorLab: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Bypass Button directly underneath VU / BARS / WAVE options */}
-                  <button
-                    type="button"
-                    onClick={() => updateParam('bypassed', !params.bypassed)}
-                    className={`w-full py-0.5 px-2 rounded-lg text-[10px] font-mono font-bold flex items-center justify-center space-x-1.5 transition-all border cursor-pointer ${
-                      params.bypassed
-                        ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-600/30 ring-1 ring-rose-400'
-                        : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white hover:border-slate-700'
-                    }`}
-                  >
-                    <Power className="w-3 h-3" />
-                    <span>{params.bypassed ? 'BYPASS (ON)' : 'BYPASS'}</span>
-                  </button>
+                  {/* Dual Action Buttons: Auto-Level & Bypass */}
+                  <div className="flex items-center gap-1.5 w-full">
+                    <button
+                      type="button"
+                      onClick={() => updateParam('autoGain', !params.autoGain)}
+                      className={`flex-1 py-0.5 px-1.5 rounded-lg text-[9px] font-mono font-bold flex items-center justify-center space-x-1 transition-all border cursor-pointer ${
+                        params.autoGain
+                          ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 shadow-sm'
+                          : 'bg-studio-950 border-studio-800 text-slate-500 hover:text-slate-300'
+                      }`}
+                      title="Smooth automatic makeup gain to maintain output level after compression"
+                    >
+                      <Sparkles className="w-2.5 h-2.5" />
+                      <span>{params.autoGain ? 'AUTO LVL' : 'MANUAL'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => updateParam('bypassed', !params.bypassed)}
+                      className={`flex-1 py-0.5 px-1.5 rounded-lg text-[9px] font-mono font-bold flex items-center justify-center space-x-1 transition-all border cursor-pointer ${
+                        params.bypassed
+                          ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-600/30 ring-1 ring-rose-400'
+                          : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white hover:border-slate-700'
+                      }`}
+                    >
+                      <Power className="w-2.5 h-2.5" />
+                      <span>{params.bypassed ? 'BYPASSED' : 'BYPASS'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 

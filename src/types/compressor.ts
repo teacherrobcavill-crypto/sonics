@@ -19,7 +19,7 @@ export const DEFAULT_COMPRESSOR_PARAMS: CompressorParams = {
   attackMs: 10.0,
   releaseMs: 100.0,
   kneeDb: 4.0,
-  autoGain: false,
+  autoGain: true,
   bypassed: false
 };
 
