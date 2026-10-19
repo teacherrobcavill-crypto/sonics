@@ -132,8 +132,8 @@ function getRandomColor(): string {
   return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 }
 
-// Monday 19 October 2026 at 06:00:00 BST timestamp (Clean launch cutoff)
-export const PRE_LAUNCH_WIPE_TIMESTAMP = 1792386000000;
+// Monday 19 October 2026 Fresh Launch Cutoff
+export const PRE_LAUNCH_WIPE_TIMESTAMP = 1792432500000;
 
 export function isPreLaunchPeriod(): boolean {
   return Date.now() < PRE_LAUNCH_WIPE_TIMESTAMP;

@@ -395,8 +395,8 @@ export async function cloudUpdateStudentTheme(
   }
 }
 
-// Pre-launch wipe threshold: Monday 19 October 2026 at 06:00:00 BST
-export const PRE_LAUNCH_WIPE_TIMESTAMP = 1792386000000;
+// Monday 19 October 2026 Fresh Launch Cutoff
+export const PRE_LAUNCH_WIPE_TIMESTAMP = 1792432500000;
 
 export function isPreLaunchPeriod(): boolean {
   return Date.now() < PRE_LAUNCH_WIPE_TIMESTAMP;

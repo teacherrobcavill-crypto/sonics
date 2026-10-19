@@ -48,7 +48,8 @@ import {
   getStoredProfiles,
   saveStudentProfile,
   getActiveStudentId,
-  setActiveStudentId
+  setActiveStudentId,
+  PRE_LAUNCH_WIPE_TIMESTAMP
 } from './utils/studentStorage';
 import {
   cloudUpdateStudentDefaultTrack,
@@ -71,18 +72,6 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  // Auto-sync any previously earned local scores to Cloud Firestore on startup
-  useEffect(() => {
-    if (isFirebaseReady()) {
-      const stored = getStoredProfiles();
-      for (const profile of Object.values(stored)) {
-        if (profile.stats && profile.stats.totalScore > 0) {
-          cloudSyncStudentProfile(profile).catch(() => {});
-        }
-      }
-    }
-  }, []);
-
   // Auto-restore active student profile from Cloud Firestore or localStorage on startup
   useEffect(() => {
     const activeId = getActiveStudentId();
@@ -92,8 +81,10 @@ export const App: React.FC = () => {
         handleStudentChanged(localProfiles[activeId]);
       } else if (isFirebaseReady()) {
         cloudGetStudentProfile(activeId).then(profile => {
-          if (profile) {
+          if (profile && profile.createdAt && profile.createdAt >= PRE_LAUNCH_WIPE_TIMESTAMP) {
             handleStudentChanged(profile);
+          } else {
+            setActiveStudentId(null);
           }
         });
       }
