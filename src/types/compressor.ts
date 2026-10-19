@@ -35,6 +35,13 @@ export interface CompressorTelemetry {
   gainReductionDb: number;   // Instantaneous gain reduction in dB (<= 0)
   avgGainReductionDb: number;// 300ms averaged gain reduction in dB (>= 0)
   vuNeedlePosition: number;  // 0.0 (rest / 0dB on right) to 1.0 (full deflection / -20dB on left)
+
+  // Real-time envelope detectors (Pre- vs Post-Compression)
+  isSignalPresent: boolean;  // True if audio input exceeds -52 dBFS
+  inputCrestDb: number;      // Peak - RMS before compression (crest factor in dB)
+  outputCrestDb: number;     // Peak - RMS after compression (crest factor in dB)
+  crestReductionDb: number;  // Input crest - Output crest (transient impact attenuation)
+  envelopeSwingDb: number;   // Gain reduction modulation swing in recent window (pumping detection)
 }
 
 export type CompressorDisplayMode = 'vu' | 'bars' | 'wave';

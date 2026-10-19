@@ -19,7 +19,6 @@ import {
   RotateCcw,
   Volume2,
   Power,
-  Sparkles,
   Sliders,
   Upload,
   Gauge,
@@ -50,7 +49,12 @@ export const CompressorLab: React.FC = () => {
     outputRmsR: -60,
     gainReductionDb: 0,
     avgGainReductionDb: 0,
-    vuNeedlePosition: 0
+    vuNeedlePosition: 0,
+    isSignalPresent: false,
+    inputCrestDb: 0,
+    outputCrestDb: 0,
+    crestReductionDb: 0,
+    envelopeSwingDb: 0
   });
 
   // Audio Context and Nodes references
@@ -251,37 +255,6 @@ export const CompressorLab: React.FC = () => {
             </p>
           </div>
         </div>
-
-        {/* Action Controls: Bypass & Auto Gain Switches */}
-        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-          {/* Auto Gain Switch */}
-          <button
-            type="button"
-            onClick={() => updateParam('autoGain', !params.autoGain)}
-            className={`px-3 py-2 rounded-xl text-xs font-mono font-bold flex items-center space-x-1.5 transition-all border cursor-pointer ${
-              params.autoGain
-                ? 'bg-amber-500 text-studio-950 border-amber-400 shadow-lg shadow-amber-500/25 ring-1 ring-amber-400'
-                : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            <span>AUTO GAIN</span>
-          </button>
-
-          {/* Bypass Button */}
-          <button
-            type="button"
-            onClick={() => updateParam('bypassed', !params.bypassed)}
-            className={`px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center space-x-1.5 transition-all border cursor-pointer ${
-              params.bypassed
-                ? 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-600/30'
-                : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
-            }`}
-          >
-            <Power className="w-3.5 h-3.5" />
-            <span>{params.bypassed ? 'BYPASS (ON)' : 'BYPASS'}</span>
-          </button>
-        </div>
       </div>
 
       {/* 2. Stems & Transport Bar */}
@@ -362,44 +335,61 @@ export const CompressorLab: React.FC = () => {
 
         {/* Main Hardware Display & 4 Precision Controls */}
         <div className="flex flex-col space-y-6">
-          {/* Display Header Mode Tabs */}
-          <div className="flex items-center justify-between px-2">
-            <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-1.5">
+          {/* Display Header Mode Tabs & Bypass */}
+          <div className="flex items-start justify-between px-2">
+            <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-1.5 pt-1">
               <Volume2 className="w-3.5 h-3.5 text-studio-accent" />
               <span>DYNAMIC GAIN REDUCTION MONITOR</span>
             </span>
 
-            {/* 3-Mode Selector Tabs */}
-            <div className="flex p-0.5 bg-studio-950 rounded-xl border border-studio-800 text-[10px] font-mono font-bold">
+            {/* Mode Tabs and Bypass stacked on the right */}
+            <div className="flex flex-col items-end gap-2">
+              {/* 3-Mode Selector Tabs */}
+              <div className="flex p-0.5 bg-studio-950 rounded-xl border border-studio-800 text-[10px] font-mono font-bold">
+                <button
+                  type="button"
+                  onClick={() => setDisplayMode('vu')}
+                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                    displayMode === 'vu' ? 'bg-amber-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Gauge className="w-3 h-3" />
+                  <span>VU</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDisplayMode('bars')}
+                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                    displayMode === 'bars' ? 'bg-cyan-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <BarChart2 className="w-3 h-3" />
+                  <span>BARS</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDisplayMode('wave')}
+                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                    displayMode === 'wave' ? 'bg-studio-accent text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Activity className="w-3 h-3" />
+                  <span>WAVE</span>
+                </button>
+              </div>
+
+              {/* Bypass Button directly underneath VU / BARS / WAVE options */}
               <button
                 type="button"
-                onClick={() => setDisplayMode('vu')}
-                className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                  displayMode === 'vu' ? 'bg-amber-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                onClick={() => updateParam('bypassed', !params.bypassed)}
+                className={`w-full py-1 px-3 rounded-lg text-[10px] font-mono font-bold flex items-center justify-center space-x-1.5 transition-all border cursor-pointer ${
+                  params.bypassed
+                    ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-600/30 ring-1 ring-rose-400'
+                    : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white hover:border-slate-700'
                 }`}
               >
-                <Gauge className="w-3 h-3" />
-                <span>VU</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDisplayMode('bars')}
-                className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                  displayMode === 'bars' ? 'bg-cyan-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <BarChart2 className="w-3 h-3" />
-                <span>BARS</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setDisplayMode('wave')}
-                className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                  displayMode === 'wave' ? 'bg-studio-accent text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <Activity className="w-3 h-3" />
-                <span>WAVE</span>
+                <Power className="w-3 h-3" />
+                <span>{params.bypassed ? 'BYPASS (ON)' : 'BYPASS'}</span>
               </button>
             </div>
           </div>

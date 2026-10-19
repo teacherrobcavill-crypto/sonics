@@ -32,6 +32,8 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
     this.preGainEnergy300 = 0.0;
     this.avgGr300 = 0.0;
     this.currentGrDb = 0.0;
+    this.grMinInInterval = 0.0;
+    this.grMaxInInterval = 0.0;
 
     // Peak & RMS meter accumulators
     this.inPeakL = 0; this.inPeakR = 0;
@@ -128,6 +130,8 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         this.outRmsAccumR = this.inRmsAccumR;
       }
       this.currentGrDb = 0.0;
+      this.grMinInInterval = 0.0;
+      this.grMaxInInterval = 0.0;
       this.flushTelemetry(numSamples);
       return true;
     }
@@ -184,6 +188,8 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       }
 
       blockGrAccum += this.envelopeDb;
+      this.grMinInInterval = Math.min(this.grMinInInterval, this.envelopeDb);
+      this.grMaxInInterval = Math.max(this.grMaxInInterval, this.envelopeDb);
       this.avgGr300 = this.alpha300 * this.avgGr300 + (1.0 - this.alpha300) * Math.abs(this.envelopeDb);
 
       // 5. Total VCA Gain
@@ -226,6 +232,17 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       const outPeakDbL = 20.0 * Math.log10(Math.max(1e-5, this.outPeakL));
       const outPeakDbR = 20.0 * Math.log10(Math.max(1e-5, this.outPeakR));
 
+      const inPeakMax = Math.max(inPeakDbL, inPeakDbR);
+      const outPeakMax = Math.max(outPeakDbL, outPeakDbR);
+      const inRmsMax = Math.max(inRmsL, inRmsR);
+      const outRmsMax = Math.max(outRmsL, outRmsR);
+
+      const isSignalPresent = inPeakMax > -52.0;
+      const inputCrestDb = isSignalPresent ? Math.max(0.0, inPeakMax - inRmsMax) : 0.0;
+      const outputCrestDb = isSignalPresent ? Math.max(0.0, outPeakMax - outRmsMax) : 0.0;
+      const crestReductionDb = isSignalPresent ? (inputCrestDb - outputCrestDb) : 0.0;
+      const envelopeSwingDb = isSignalPresent ? Math.abs(this.grMaxInInterval - this.grMinInInterval) : 0.0;
+
       this.port.postMessage({
         type: 'telemetry',
         data: {
@@ -239,7 +256,12 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
           outputRmsR: outRmsR,
           gainReductionDb: this.currentGrDb,
           avgGainReductionDb: this.avgGr300,
-          autoGainBoostDb: this.autoGainCurrentDb
+          autoGainBoostDb: this.autoGainCurrentDb,
+          isSignalPresent,
+          inputCrestDb,
+          outputCrestDb,
+          crestReductionDb,
+          envelopeSwingDb
         }
       });
 
@@ -249,6 +271,8 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       this.inRmsAccumL = 0; this.inRmsAccumR = 0;
       this.outPeakL = 0; this.outPeakR = 0;
       this.outRmsAccumL = 0; this.outRmsAccumR = 0;
+      this.grMinInInterval = this.envelopeDb;
+      this.grMaxInInterval = this.envelopeDb;
     }
   }
 }
