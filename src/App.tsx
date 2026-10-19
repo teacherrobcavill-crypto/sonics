@@ -44,7 +44,8 @@ import {
   saveTheme,
   updateStudentTheme,
   purgePreLaunchStorage,
-  isPreLaunchPeriod
+  isPreLaunchPeriod,
+  getStoredProfiles
 } from './utils/studentStorage';
 import {
   cloudUpdateStudentDefaultTrack,
