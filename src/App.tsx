@@ -14,7 +14,8 @@ import {
   Compass,
   Volume2,
   VolumeX,
-  Palette
+  Palette,
+  Gauge
 } from 'lucide-react';
 import { GameMode, RoundResult, UserStats, AudioSourceType } from './types';
 import { audioEngine } from './audio/AudioEngine';
@@ -25,6 +26,7 @@ import { DbMasterGame } from './components/games/DbMasterGame';
 import { FilterDoctorGame } from './components/games/FilterDoctorGame';
 import { EQMatchGame } from './components/games/EQMatchGame';
 import { SandboxEQ } from './components/games/SandboxEQ';
+import { CompressorLab } from './components/compressor/CompressorLab';
 import { SessionStats } from './components/SessionStats';
 import { ScoreFlashOverlay } from './components/ScoreFlashOverlay';
 import { Leaderboard } from './components/Leaderboard';
@@ -64,7 +66,7 @@ import {
   cloudGetStudentProfile
 } from './services/firebase';
 
-type AppTab = GameMode | 'leaderboard';
+type AppTab = GameMode | 'leaderboard' | 'compressor_lab';
 
 export const App: React.FC = () => {
   useEffect(() => {
@@ -608,6 +610,19 @@ export const App: React.FC = () => {
               <span>{isMobile ? 'EQ Sandbox' : 'EQ Sandbox (Unlimited)'}</span>
             </button>
 
+            {/* Compressor Lab Tab */}
+            <button
+              onClick={() => { setActiveTab('compressor_lab'); setShowStats(false); }}
+              className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === 'compressor_lab' && !showStats
+                  ? 'bg-amber-500 text-studio-950 font-bold shadow-lg shadow-amber-500/20'
+                  : 'bg-studio-900 border border-studio-800 text-amber-400 hover:text-amber-300 hover:bg-studio-850'
+              }`}
+            >
+              <Gauge className="w-4 h-4" />
+              <span>Compressor Lab</span>
+            </button>
+
             {/* Leaderboard Tab */}
             <button
               onClick={() => { setActiveTab('leaderboard'); setShowStats(false); }}
@@ -738,11 +753,15 @@ export const App: React.FC = () => {
             {activeTab === 'sandbox' && (
               <SandboxEQ isMobile={isMobile} />
             )}
+
+            {activeTab === 'compressor_lab' && (
+              <CompressorLab />
+            )}
           </>
         )}
 
-        {/* Pro Audio Reference Guide Footer (Hidden on Ranks / Leaderboard tab) */}
-        {activeTab !== 'leaderboard' && (
+        {/* Pro Audio Reference Guide Footer (Hidden on Ranks / Leaderboard and Compressor Lab tabs) */}
+        {activeTab !== 'leaderboard' && activeTab !== 'compressor_lab' && (
           <section className="bg-studio-900/60 border border-studio-800/60 rounded-2xl p-4 text-xs text-slate-400 space-y-2.5">
             <div className="font-bold text-slate-300 flex items-center space-x-2 text-xs sm:text-sm">
               <HelpCircle className="w-4 h-4 text-studio-accent flex-shrink-0" />
@@ -817,7 +836,7 @@ export const App: React.FC = () => {
       {/* Sticky Mobile Bottom Navigation Bar */}
       {isMobile && (
         <nav className="fixed bottom-0 left-0 right-0 z-40 bg-studio-950/95 backdrop-blur-lg border-t border-studio-800/90 shadow-2xl">
-          <div className="max-w-md mx-auto px-1 py-1.5 grid grid-cols-7 gap-0.5 text-[10px] font-mono">
+          <div className="max-w-md mx-auto px-1 py-1.5 grid grid-cols-8 gap-0.5 text-[10px] font-mono">
             <button
               onClick={() => { setActiveTab('peak_master'); setShowStats(false); }}
               className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all cursor-pointer ${
@@ -888,6 +907,18 @@ export const App: React.FC = () => {
             >
               <Music className="w-4 h-4 mb-0.5" />
               <span className="text-[9px] tracking-tight">Sandbox</span>
+            </button>
+
+            <button
+              onClick={() => { setActiveTab('compressor_lab'); setShowStats(false); }}
+              className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all cursor-pointer ${
+                activeTab === 'compressor_lab' && !showStats
+                  ? 'bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              <Gauge className="w-4 h-4 mb-0.5" />
+              <span className="text-[9px] tracking-tight">Comp</span>
             </button>
 
             <button
