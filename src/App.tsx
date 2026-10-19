@@ -524,15 +524,17 @@ export const App: React.FC = () => {
           : 'max-w-7xl px-4 sm:px-6 py-6 space-y-6'
       }`}>
 
-        {/* Global Master Audio Sources & Volume Bar */}
-        <AudioTransport
-          isMobile={isMobile}
-          volume={volume}
-          isMuted={isMuted}
-          onVolumeChange={handleVolumeChange}
-          onToggleMute={handleToggleMute}
-          currentStudent={currentStudent}
-        />
+        {/* Global Master Audio Sources & Volume Bar (Hidden in Compressor Lab to preserve screen space) */}
+        {activeTab !== 'compressor_lab' && (
+          <AudioTransport
+            isMobile={isMobile}
+            volume={volume}
+            isMuted={isMuted}
+            onVolumeChange={handleVolumeChange}
+            onToggleMute={handleToggleMute}
+            currentStudent={currentStudent}
+          />
+        )}
 
         {/* Navigation Tabs for Training Modes + Leaderboard (Desktop Only - Mobile uses bottom nav) */}
         {!isMobile && (
@@ -755,7 +757,12 @@ export const App: React.FC = () => {
             )}
 
             {activeTab === 'compressor_lab' && (
-              <CompressorLab />
+              <CompressorLab
+                volume={volume}
+                isMuted={isMuted}
+                onVolumeChange={handleVolumeChange}
+                onToggleMute={handleToggleMute}
+              />
             )}
           </>
         )}

@@ -27,10 +27,46 @@ import {
   Gauge,
   BarChart2,
   Activity,
-  Sparkles
+  Sparkles,
+  VolumeX
 } from 'lucide-react';
 
-export const CompressorLab: React.FC = () => {
+export interface CompressorLabProps {
+  volume?: number;
+  isMuted?: boolean;
+  onVolumeChange?: (vol: number) => void;
+  onToggleMute?: () => void;
+}
+
+export const CompressorLab: React.FC<CompressorLabProps> = ({
+  volume: propVolume,
+  isMuted: propIsMuted,
+  onVolumeChange,
+  onToggleMute
+}) => {
+  // Volume state (controlled by parent App or internal fallback)
+  const [internalVolume, setInternalVolume] = useState(0.85);
+  const [internalIsMuted, setInternalIsMuted] = useState(false);
+
+  const currentVolume = propVolume !== undefined ? propVolume : internalVolume;
+  const isMuted = propIsMuted !== undefined ? propIsMuted : internalIsMuted;
+
+  const handleVolumeChange = (newVol: number) => {
+    if (onVolumeChange) {
+      onVolumeChange(newVol);
+    } else {
+      setInternalVolume(newVol);
+    }
+  };
+
+  const handleToggleMute = () => {
+    if (onToggleMute) {
+      onToggleMute();
+    } else {
+      setInternalIsMuted(prev => !prev);
+    }
+  };
+
   // Audio state
   const [isPlaying, setIsPlaying] = useState(false);
   const [selectedStem, setSelectedStem] = useState<CompressorStem>(COMPRESSOR_STEMS[0]);
@@ -77,7 +113,7 @@ export const CompressorLab: React.FC = () => {
     audioCtxRef.current = ctx;
 
     const masterGain = ctx.createGain();
-    masterGain.gain.value = 0.85;
+    masterGain.gain.value = isMuted ? 0 : currentVolume;
     masterGain.connect(ctx.destination);
     masterGainRef.current = masterGain;
 
@@ -106,6 +142,14 @@ export const CompressorLab: React.FC = () => {
       ctx.close();
     };
   }, []);
+
+  // Sync volume & mute changes to master gain
+  useEffect(() => {
+    if (masterGainRef.current && audioCtxRef.current) {
+      const targetGain = isMuted ? 0 : currentVolume;
+      masterGainRef.current.gain.setValueAtTime(targetGain, audioCtxRef.current.currentTime);
+    }
+  }, [currentVolume, isMuted]);
 
   // Sync parameters to AudioWorklet
   useEffect(() => {
@@ -252,7 +296,7 @@ export const CompressorLab: React.FC = () => {
       {/* 1. Hardware Rack Console Top Header */}
       <div className="bg-studio-900 border border-studio-800 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-600/30 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shadow-md">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-600/30 border border-cyan-400/40 flex items-center justify-center text-cyan-400 shadow-md flex-shrink-0">
             <Sliders className="w-5 h-5" />
           </div>
           <div>
@@ -268,6 +312,37 @@ export const CompressorLab: React.FC = () => {
               Live VST3 DSP port with ANSI C16.5 ballistics & real-time acoustic diagnostics.
             </p>
           </div>
+        </div>
+
+        {/* Master Output Volume Control on the Right */}
+        <div className="flex items-center space-x-3 bg-studio-950/80 px-3.5 py-2 rounded-2xl border border-studio-800 shadow-inner w-full sm:w-auto justify-between sm:justify-end">
+          <div className="flex items-center space-x-2.5">
+            <button
+              type="button"
+              onClick={handleToggleMute}
+              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-studio-900 transition-colors cursor-pointer flex-shrink-0"
+              title={isMuted ? 'Unmute Master Volume' : 'Mute Master Volume'}
+            >
+              {isMuted ? (
+                <VolumeX className="w-4 h-4 text-rose-400" />
+              ) : (
+                <Volume2 className="w-4 h-4 text-cyan-400" />
+              )}
+            </button>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.01"
+              value={isMuted ? 0 : currentVolume}
+              onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
+              className="w-28 sm:w-36 h-2 bg-studio-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+              title={`Master Volume: ${Math.round((isMuted ? 0 : currentVolume) * 100)}%`}
+            />
+          </div>
+          <span className="text-xs font-mono font-bold text-slate-300 min-w-[38px] text-right">
+            {Math.round((isMuted ? 0 : currentVolume) * 100)}%
+          </span>
         </div>
       </div>
 
