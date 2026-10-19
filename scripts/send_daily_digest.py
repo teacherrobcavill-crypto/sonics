@@ -1,15 +1,23 @@
 #!/usr/bin/env python3
 """
 SonicEQ Daily Rank Reminder & Console Briefing Dispatcher
-Presents a 1:1 authentic SonicEQ studio hardware rack console UI in rich HTML.
-Cycles through game-specific point accumulation tips and dispatches via Apple Mail.
+Presents a 1:1 authentic Sonics studio hardware rack console UI in rich HTML.
+Cycles through game-specific point accumulation tips and dispatches:
+  - via macOS Mail (if run locally on macOS)
+  - via iCloud SMTP (if run in GitHub Actions / cloud with ICLOUD_APP_PASSWORD)
 """
 
 import subprocess
 import html
 import sys
+import os
+import json
+import ssl
+import smtplib
+import urllib.request
 import datetime
-import random
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 # Curated rotating pool of game-specific point accumulation options and tips
 POINT_ACCUMULATION_TIPS = [
@@ -116,7 +124,7 @@ def build_console_email_html(
             f"memory—spend 5 minutes at the console today, bank your points, and climb the rank ladder!"
         )
 
-    # Build 1:1 authentic SonicEQ studio UI email
+    # Build 1:1 authentic Sonics studio UI email
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -311,10 +319,7 @@ def send_via_apple_mail(
     html_content: str,
     sender: str = "Sonics <sonics@rjcmusicproduction.co.uk>"
 ) -> bool:
-    """
-    Sends rich HTML email via macOS Mail using the official 'set html content' command
-    from Sonics <sonics@rjcmusicproduction.co.uk>.
-    """
+    """Sends rich HTML email via macOS Mail (for local Mac execution)."""
     escaped_subject = subject.replace('\\', '\\\\').replace('"', '\\"')
     escaped_sender = sender.replace('\\', '\\\\').replace('"', '\\"')
     escaped_html = html_content.replace('\\', '\\\\').replace('"', '\\"')
@@ -335,30 +340,145 @@ def send_via_apple_mail(
         return False
     return True
 
+def send_via_smtp(
+    to_email: str,
+    subject: str,
+    html_content: str,
+    username: str,
+    app_password: str,
+    sender: str = "Sonics <sonics@rjcmusicproduction.co.uk>"
+) -> bool:
+    """Sends rich HTML email via iCloud SMTP (for GitHub Actions / cloud execution)."""
+    try:
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = sender
+        msg['To'] = to_email
+
+        plain_text = (
+            f"Sonics Studio Console Daily Dispatch\n\n"
+            f"Launch your session: https://sonics.rjcmusicproduction.co.uk\n"
+        )
+        part1 = MIMEText(plain_text, 'plain', 'utf-8')
+        part2 = MIMEText(html_content, 'html', 'utf-8')
+        msg.attach(part1)
+        msg.attach(part2)
+
+        server = smtplib.SMTP('smtp.mail.me.com', 587, timeout=20)
+        server.starttls()
+        server.login(username, app_password)
+        server.sendmail('sonics@rjcmusicproduction.co.uk', [to_email], msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"Error dispatching via SMTP to {to_email}: {e}", file=sys.stderr)
+        return False
+
+def dispatch_email(to_email: str, subject: str, html_content: str) -> bool:
+    """Dispatches via SMTP if cloud credentials exist, else falls back to Apple Mail."""
+    smtp_user = os.environ.get('ICLOUD_USERNAME')
+    smtp_pass = os.environ.get('ICLOUD_APP_PASSWORD')
+
+    if smtp_user and smtp_pass:
+        return send_via_smtp(to_email, subject, html_content, smtp_user, smtp_pass)
+    elif sys.platform == 'darwin':
+        return send_via_apple_mail(to_email, subject, html_content)
+    else:
+        print("Error: No SMTP credentials provided (ICLOUD_USERNAME, ICLOUD_APP_PASSWORD) on non-macOS environment.", file=sys.stderr)
+        return False
+
+def fetch_students_from_firestore() -> list:
+    """Fetches registered students and rankings from Firestore REST API."""
+    ctx = ssl._create_unverified_context()
+    url = 'https://firestore.googleapis.com/v1/projects/soniceq-96d91/databases/(default)/documents/students?key=AIzaSyC3lS45ktSv4Jou7cxv6Oi9gb8GKiNwN1Y'
+    try:
+        req = urllib.request.urlopen(url, context=ctx)
+        data = json.loads(req.read().decode('utf-8'))
+        docs = data.get('documents', [])
+        
+        students = []
+        for doc_item in docs:
+            fields = doc_item.get('fields', {})
+            name = fields.get('name', {}).get('stringValue', '').strip()
+            email_addr = fields.get('email', {}).get('stringValue', '').strip()
+            cohort = fields.get('cohortYear', {}).get('stringValue', '2026')
+            
+            stats = fields.get('stats', {}).get('mapValue', {}).get('fields', {})
+            score = int(stats.get('totalScore', {}).get('integerValue', 0))
+            rank_title = stats.get('rankTitle', {}).get('stringValue', 'Audio Novice')
+
+            if name:
+                students.append({
+                    "name": name,
+                    "email": email_addr,
+                    "score": score,
+                    "rankTitle": rank_title,
+                    "cohortYear": cohort
+                })
+
+        # Sort students descending by score for true live leaderboard ranking
+        students.sort(key=lambda s: s['score'], reverse=True)
+        for idx, s in enumerate(students):
+            s['rank'] = idx + 1
+
+        return students
+    except Exception as e:
+        print(f"Notice querying Firestore: {e}", file=sys.stderr)
+        return []
+
 if __name__ == "__main__":
-    recipient = sys.argv[1] if len(sys.argv) > 1 else "bobbycavill@icloud.com"
-    day_offset = int(sys.argv[2]) if len(sys.argv) > 2 else 0
-
-    print(f"Generating authentic Sonics Studio Console dispatch for {recipient}...")
-    sample_html = build_console_email_html(
-        student_name="Bobby Cavill",
-        rank=1,
-        total_students=24,
-        score=2450,
-        rank_title="Console Commander",
-        cohort_year="2026",
-        day_offset=day_offset
-    )
-
+    day_offset = int(os.environ.get('DAY_OFFSET', 0))
     focus = get_todays_focus(day_offset)
     subject = f"🎛️ Sonics Studio Console: Today's Standing & {focus['badge']}"
 
-    print(f"Subject: {subject}")
-    print(f"Today's Focus: {focus['title']} ({focus['module']})")
-    print(f"Dispatching to {recipient} via macOS Mail...")
+    # Mode 1: Dispatch to a single manual test recipient
+    if len(sys.argv) > 1 and not sys.argv[1].startswith('--'):
+        recipient = sys.argv[1]
+        print(f"Dispatching test briefing to {recipient}...")
+        html_out = build_console_email_html(
+            student_name="Bobby Cavill",
+            rank=1,
+            total_students=24,
+            score=2450,
+            rank_title="Console Commander",
+            cohort_year="2026",
+            day_offset=day_offset
+        )
+        if dispatch_email(recipient, subject, html_out):
+            print(f"Success! Dispatched to {recipient}.")
+        else:
+            print(f"Failed to dispatch to {recipient}.")
+            sys.exit(1)
 
-    if send_via_apple_mail(recipient, subject, sample_html):
-        print("Success! Dispatched authentic SonicEQ console email.")
+    # Mode 2: Automated Cloud / Roster Dispatch
     else:
-        print("Failed to dispatch.")
-        sys.exit(1)
+        print("Starting Sonics Daily Cloud Dispatch...")
+        students = fetch_students_from_firestore()
+        print(f"Found {len(students)} total student profile(s) on leaderboard.")
+
+        recipients = [s for s in students if s['email'] and '@' in s['email']]
+        print(f"Found {len(recipients)} student(s) with registered email addresses.")
+
+        if not recipients:
+            print("No students with valid email addresses found. Nothing to dispatch.")
+            sys.exit(0)
+
+        success_count = 0
+        for s in recipients:
+            print(f"Preparing dispatch for {s['name']} <{s['email']}> (Rank #{s['rank']}, {s['score']} pts)...")
+            html_out = build_console_email_html(
+                student_name=s['name'],
+                rank=s['rank'],
+                total_students=len(students),
+                score=s['score'],
+                rank_title=s['rankTitle'],
+                cohort_year=s['cohortYear'],
+                day_offset=day_offset
+            )
+            if dispatch_email(s['email'], subject, html_out):
+                success_count += 1
+                print(f"  ✓ Sent to {s['email']}")
+            else:
+                print(f"  ✗ Failed to send to {s['email']}")
+
+        print(f"Dispatch complete! {success_count}/{len(recipients)} emails sent.")

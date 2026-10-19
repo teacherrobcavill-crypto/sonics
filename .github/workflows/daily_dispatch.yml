@@ -1,0 +1,38 @@
+name: Daily Sonics Studio Briefing Dispatch
+
+on:
+  schedule:
+    # 06:00 UTC corresponds to 07:00 BST (UK Summer Time)
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      test_recipient:
+        description: 'Optional single test recipient email (leave blank to dispatch to all registered students)'
+        required: false
+        default: ''
+
+jobs:
+  dispatch-briefing:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Codebase
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Dispatch Sonics Studio Briefing
+        env:
+          ICLOUD_USERNAME: ${{ secrets.ICLOUD_USERNAME }}
+          ICLOUD_APP_PASSWORD: ${{ secrets.ICLOUD_APP_PASSWORD }}
+        run: |
+          if [ -n "${{ github.event.inputs.test_recipient }}" ]; then
+            echo "Running test dispatch to: ${{ github.event.inputs.test_recipient }}"
+            python scripts/send_daily_digest.py "${{ github.event.inputs.test_recipient }}"
+          else
+            echo "Running automated morning dispatch to all registered students..."
+            python scripts/send_daily_digest.py
+          fi
