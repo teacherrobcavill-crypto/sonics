@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   User,
   Lock,
@@ -18,8 +18,10 @@ import {
   Activity,
   Disc,
   Radio,
-  Palette
+  Palette,
+  Upload
 } from 'lucide-react';
+import { audioEngine } from '../audio/AudioEngine';
 import {
   StudentProfile,
   signInStudent,
@@ -81,10 +83,36 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
   const [selectedTheme, setSelectedTheme] = useState<AppTheme>(() => {
     return currentStudent?.theme || getSavedTheme() || 'cyber';
   });
+  const [customFileName, setCustomFileName] = useState<string | null>(() => audioEngine.getCustomFileName());
+  const modalFileInputRef = useRef<HTMLInputElement | null>(null);
+  const modalSessionFileInputRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    setCustomFileName(audioEngine.getCustomFileName());
+  }, [isOpen]);
+
+  const handleModalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isSession = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const name = await audioEngine.loadCustomAudioFile(file);
+      setCustomFileName(name);
+      if (isSession) {
+        setSessionDefaultTrack('custom_file');
+      } else if (onUpdateDefaultTrack) {
+        await onUpdateDefaultTrack('custom_file');
+      }
+    } catch (err) {
+      console.error("Failed to load audio file in modal", err);
+      alert("Failed to decode audio file. Please try a standard MP3 or WAV file.");
+    } finally {
+      if (e.target) e.target.value = '';
+    }
+  };
 
   useEffect(() => {
     if (currentStudent?.theme) {
@@ -185,7 +213,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
 
         setActiveStudentId(cloudRes.profile.id);
         onStudentChanged(cloudRes.profile);
-        const trackLabel = TRACK_OPTIONS.find(t => t.id === sessionDefaultTrack)?.label || sessionDefaultTrack;
+        const trackLabel = TRACK_OPTIONS.find(t => t.id === sessionDefaultTrack)?.label || (sessionDefaultTrack === 'custom_file' ? (customFileName || 'Custom Audio') : sessionDefaultTrack);
         setSuccessMsg(
           tab === 'register'
             ? `Account created! Welcome, ${cloudRes.profile.name}!`
@@ -237,7 +265,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
         if (onUpdateDefaultTrack) {
           await onUpdateDefaultTrack(sessionDefaultTrack);
         }
-        const trackLabel = TRACK_OPTIONS.find(t => t.id === sessionDefaultTrack)?.label || sessionDefaultTrack;
+        const trackLabel = TRACK_OPTIONS.find(t => t.id === sessionDefaultTrack)?.label || (sessionDefaultTrack === 'custom_file' ? (customFileName || 'Custom Audio') : sessionDefaultTrack);
         setSuccessMsg(`Welcome back, ${finalProfile.name}! Track set to ${trackLabel}.`);
         setTimeout(() => {
           onStudentChanged(finalProfile);
@@ -364,6 +392,13 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
               <p className="text-[11px] text-slate-400 leading-normal">
                 Choose the track you want to hear first whenever you log in or train:
               </p>
+              <input
+                type="file"
+                ref={modalFileInputRef}
+                onChange={(e) => handleModalFileUpload(e, false)}
+                accept="audio/*"
+                className="hidden"
+              />
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-0.5">
                 {TRACK_OPTIONS.map(opt => {
                   const isSelected = (currentStudent.defaultTrack || 'dance_pop') === opt.id;
@@ -389,6 +424,48 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
                     </button>
                   );
                 })}
+
+                {/* Custom Audio / Load Audio Option */}
+                {(() => {
+                  const isSelected = (currentStudent.defaultTrack || 'dance_pop') === 'custom_file';
+                  return (
+                    <div className="flex items-center space-x-1">
+                      <button
+                        key="custom_file"
+                        type="button"
+                        onClick={async () => {
+                          if (audioEngine.hasCustomAudio()) {
+                            if (onUpdateDefaultTrack) {
+                              await onUpdateDefaultTrack('custom_file');
+                            }
+                          } else {
+                            modalFileInputRef.current?.click();
+                          }
+                        }}
+                        className={`flex-1 px-2 py-1.5 rounded-xl text-xs font-mono flex items-center space-x-1.5 transition-all border cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 font-bold shadow-sm'
+                            : 'bg-studio-900 border-studio-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                        }`}
+                        title={customFileName ? `Default: ${customFileName}` : "Upload reference audio (MP3, WAV)"}
+                      >
+                        <Upload className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-cyan-400' : 'text-slate-400'}`} />
+                        <span className="truncate">{customFileName || "Load Audio"}</span>
+                        {isSelected && <Star className="w-2.5 h-2.5 fill-cyan-400 text-cyan-400 ml-auto flex-shrink-0" />}
+                      </button>
+                      {customFileName && (
+                        <button
+                          type="button"
+                          onClick={() => modalFileInputRef.current?.click()}
+                          className="p-1.5 rounded-lg bg-studio-900 border border-studio-800 text-slate-400 hover:text-cyan-300 hover:border-slate-700 transition-colors cursor-pointer flex-shrink-0"
+                          title="Upload a different custom audio file"
+                        >
+                          <Upload className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -578,6 +655,13 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
                 </span>
                 <span className="text-[10px] text-amber-400 font-normal">Loads automatically</span>
               </label>
+              <input
+                type="file"
+                ref={modalSessionFileInputRef}
+                onChange={(e) => handleModalFileUpload(e, true)}
+                accept="audio/*"
+                className="hidden"
+              />
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                 {TRACK_OPTIONS.map(opt => {
                   const isSelected = sessionDefaultTrack === opt.id;
@@ -599,6 +683,46 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
                     </button>
                   );
                 })}
+
+                {/* Custom Audio / Load Audio Option */}
+                {(() => {
+                  const isSelected = sessionDefaultTrack === 'custom_file';
+                  return (
+                    <div className="flex items-center space-x-1 col-span-2 sm:col-span-1">
+                      <button
+                        key="custom_file_session"
+                        type="button"
+                        onClick={() => {
+                          if (audioEngine.hasCustomAudio()) {
+                            setSessionDefaultTrack('custom_file');
+                          } else {
+                            modalSessionFileInputRef.current?.click();
+                          }
+                        }}
+                        className={`flex-1 px-2 py-1.5 rounded-xl text-xs font-mono flex items-center space-x-1.5 transition-all border cursor-pointer ${
+                          isSelected
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 font-bold shadow-sm'
+                            : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                        }`}
+                        title={customFileName ? `Session: ${customFileName}` : "Upload reference audio (MP3, WAV)"}
+                      >
+                        <Upload className={`w-3.5 h-3.5 flex-shrink-0 ${isSelected ? 'text-cyan-400' : 'text-slate-400'}`} />
+                        <span className="truncate">{customFileName || "Load Audio"}</span>
+                        {isSelected && <Star className="w-2.5 h-2.5 fill-cyan-400 text-cyan-400 ml-auto flex-shrink-0" />}
+                      </button>
+                      {customFileName && (
+                        <button
+                          type="button"
+                          onClick={() => modalSessionFileInputRef.current?.click()}
+                          className="p-1.5 rounded-lg bg-studio-950 border border-studio-800 text-slate-400 hover:text-cyan-300 hover:border-slate-700 transition-colors cursor-pointer flex-shrink-0"
+                          title="Upload a different custom audio file"
+                        >
+                          <Upload className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}

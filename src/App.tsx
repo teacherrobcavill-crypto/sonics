@@ -50,7 +50,8 @@ import {
   cloudUpdateStudentDefaultTrack,
   cloudUpdateStudentTheme,
   isFirebaseReady,
-  cloudPurgePreLaunchData
+  cloudPurgePreLaunchData,
+  cloudSyncStudentProfile
 } from './services/firebase';
 
 type AppTab = GameMode | 'leaderboard';
@@ -231,17 +232,19 @@ export const App: React.FC = () => {
     // Starry explosion and score popup always triggers for learning feedback
     setLatestResult(result);
 
-    // If practicing on custom uploaded audio, rounds are unranked & not recorded to leaderboard or daily usage
-    if (isCustomAudio) {
-      return;
-    }
-
     if (currentStudent && activeTab !== 'leaderboard') {
       const recorded = recordStudentRound(currentStudent.id, activeTab as GameMode, result);
       if (recorded) {
         setCurrentStudent({ ...recorded.updatedProfile });
         setStats({ ...recorded.updatedProfile.stats });
         setHistory([...recorded.updatedProfile.history]);
+
+        // Synchronize real-time score to Cloud Firestore
+        if (isFirebaseReady()) {
+          cloudSyncStudentProfile(recorded.updatedProfile).catch(err => {
+            console.warn("Notice: cloud profile sync:", err);
+          });
+        }
         return;
       }
     }
@@ -273,13 +276,20 @@ export const App: React.FC = () => {
   };
 
   const handleBonusPoints = (bonusPoints: number) => {
-    if (isCustomAudio || bonusPoints <= 0) return;
+    if (bonusPoints <= 0) return;
 
     if (currentStudent) {
       const updated = addStudentBonusPoints(currentStudent.id, bonusPoints);
       if (updated) {
         setCurrentStudent({ ...updated });
         setStats({ ...updated.stats });
+
+        // Synchronize bonus points to Cloud Firestore
+        if (isFirebaseReady()) {
+          cloudSyncStudentProfile(updated).catch(err => {
+            console.warn("Notice: cloud bonus sync:", err);
+          });
+        }
         return;
       }
     }

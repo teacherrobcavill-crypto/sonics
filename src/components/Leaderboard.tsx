@@ -140,7 +140,51 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     }
   }, [currentStudent, selectedGame]);
 
-  const baseLeaderboard = cloudEntries.length > 0 ? cloudEntries : getLeaderboard(selectedGame);
+  const localLeaderboard = getLeaderboard(selectedGame);
+  
+  // Combine cloud entries with local student's live stats
+  let baseLeaderboard: LeaderboardEntry[];
+  if (cloudEntries.length === 0) {
+    baseLeaderboard = localLeaderboard;
+  } else {
+    baseLeaderboard = [...cloudEntries];
+    if (currentStudent) {
+      const studentStats = selectedGame === 'all'
+        ? currentStudent.stats
+        : (currentStudent.modeStats?.[selectedGame as GameMode] || getStudentModeStats(currentStudent, selectedGame as GameMode));
+
+      const idx = baseLeaderboard.findIndex(e => e.id === currentStudent.id);
+      if (idx >= 0) {
+        if (studentStats.totalScore > baseLeaderboard[idx].totalScore) {
+          baseLeaderboard[idx] = {
+            ...baseLeaderboard[idx],
+            totalScore: studentStats.totalScore,
+            roundsPlayed: Math.max(baseLeaderboard[idx].roundsPlayed, studentStats.roundsPlayed),
+            bestStreak: Math.max(baseLeaderboard[idx].bestStreak, studentStats.bestStreak),
+            averageAccuracyOctaves: studentStats.averageAccuracyOctaves,
+            rankTitle: studentStats.rankTitle,
+            isCurrentUser: true
+          };
+        }
+      } else {
+        baseLeaderboard.push({
+          rank: 0,
+          id: currentStudent.id,
+          name: currentStudent.name,
+          totalScore: studentStats.totalScore,
+          roundsPlayed: studentStats.roundsPlayed,
+          bestStreak: studentStats.bestStreak,
+          averageAccuracyOctaves: studentStats.averageAccuracyOctaves,
+          rankTitle: studentStats.rankTitle,
+          isCurrentUser: true,
+          avatarColor: currentStudent.avatarColor || 'from-cyan-500 to-blue-600',
+          cohortYear: currentStudent.cohortYear || 'Class of 2026',
+          scope: selectedGame
+        });
+      }
+    }
+  }
+
   const rawLeaderboard = mergeGlynJohnsIntoLeaderboard(baseLeaderboard, selectedGame, currentStudent?.id);
 
   // Dynamic available years starting with game birth year (2026) up to current calendar year

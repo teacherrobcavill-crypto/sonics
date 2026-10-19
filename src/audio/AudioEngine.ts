@@ -46,6 +46,7 @@ export class AudioEngine {
   // Audio Buffers
   private buffers: Map<AudioSourceType, AudioBuffer> = new Map();
   private customBuffer: AudioBuffer | null = null;
+  private customFileName: string | null = null;
   private currentSourceType: AudioSourceType = 'dance_pop';
 
   // Playback nodes
@@ -404,6 +405,7 @@ export class AudioEngine {
     const arrayBuffer = await file.arrayBuffer();
     const audioBuffer = await this.ctx.decodeAudioData(arrayBuffer);
     this.customBuffer = audioBuffer;
+    this.customFileName = file.name;
     this.buffers.set('custom_file', audioBuffer);
     this.monoBuffers.delete('custom_file');
     this.currentSourceType = 'custom_file';
@@ -415,6 +417,14 @@ export class AudioEngine {
     this.notifyState();
 
     return file.name;
+  }
+
+  public getCustomFileName(): string | null {
+    return this.customFileName;
+  }
+
+  public hasCustomAudio(): boolean {
+    return this.customBuffer !== null;
   }
 
   public getCurrentSourceType(): AudioSourceType {

@@ -439,6 +439,47 @@ export async function cloudPurgePreLaunchData(): Promise<{ deletedStudents: numb
 }
 
 /**
+ * Fully synchronizes a student's profile, points, modeStats, streaks, and history to Firestore
+ */
+export async function cloudSyncStudentProfile(profile: StudentProfile): Promise<boolean> {
+  const firestore = getFirebaseDb();
+  if (!firestore) return false;
+
+  const studentDocRef = doc(firestore, 'students', profile.id);
+  try {
+    await setDoc(studentDocRef, {
+      ...profile,
+      cohortYear: profile.cohortYear || 'Class of 2026',
+      updatedAt: Date.now()
+    }, { merge: true });
+
+    // Also write recent score to scores collection if history is present
+    try {
+      if (profile.history && profile.history.length > 0) {
+        const lastResult = profile.history[profile.history.length - 1];
+        await addDoc(collection(firestore, 'scores'), {
+          nickname: profile.name,
+          studentId: profile.id,
+          score: lastResult.score,
+          totalScore: profile.stats.totalScore,
+          mode: lastResult.mode,
+          rankTitle: profile.stats.rankTitle,
+          cohortYear: profile.cohortYear || 'Class of 2026',
+          timestamp: Date.now()
+        });
+      }
+    } catch {
+      // Optional scores collection record
+    }
+
+    return true;
+  } catch (e) {
+    console.error("Failed to sync profile to cloud:", e);
+    return false;
+  }
+}
+
+/**
  * Fetch live classroom leaderboard across all cohorts (including alumni)
  */
 export async function cloudFetchLeaderboard(
@@ -449,21 +490,22 @@ export async function cloudFetchLeaderboard(
   if (!firestore) return [];
 
   try {
-    // During pre-launch (prior to Monday 19 Oct 2026 06:00 BST), continuously sweep all test players
-    if (isPreLaunchPeriod()) {
-      await cloudPurgePreLaunchData();
-      return mergeGlynJohnsIntoLeaderboard([], scope, activeStudentId);
+    let docsList: any[] = [];
+    try {
+      const q = query(collection(firestore, 'students'), orderBy('stats.totalScore', 'desc'));
+      const querySnapshot = await getDocs(q);
+      docsList = querySnapshot.docs;
+    } catch (queryErr) {
+      console.warn("Notice in indexed query, falling back to direct collection fetch:", queryErr);
+      const querySnapshot = await getDocs(collection(firestore, 'students'));
+      docsList = querySnapshot.docs;
     }
 
-    const q = query(collection(firestore, 'students'), orderBy('stats.totalScore', 'desc'));
-    const querySnapshot = await getDocs(q);
-
     const entries: LeaderboardEntry[] = [];
-    for (const doc of querySnapshot.docs) {
-      const p = doc.data() as StudentProfile & { cohortYear?: string };
-      // Safety: purge any account created before launch
+    for (const docSnap of docsList) {
+      const p = docSnap.data() as StudentProfile & { cohortYear?: string };
+      // Safety: skip test accounts created before launch
       if (p.createdAt && p.createdAt < PRE_LAUNCH_WIPE_TIMESTAMP) {
-        await deleteDoc(doc.ref);
         continue;
       }
 
@@ -471,15 +513,17 @@ export async function cloudFetchLeaderboard(
         ? p.stats
         : (p.modeStats[scope as GameMode] || getStudentModeStats(p, scope as GameMode));
 
+      if (!userStats) continue;
+
       entries.push({
         rank: 0,
         id: p.id,
         name: p.name,
-        totalScore: userStats.totalScore,
-        roundsPlayed: userStats.roundsPlayed,
-        bestStreak: userStats.bestStreak,
-        averageAccuracyOctaves: userStats.averageAccuracyOctaves,
-        rankTitle: getRankTitle(userStats.totalScore, userStats.roundsPlayed),
+        totalScore: userStats.totalScore || 0,
+        roundsPlayed: userStats.roundsPlayed || 0,
+        bestStreak: userStats.bestStreak || 0,
+        averageAccuracyOctaves: userStats.averageAccuracyOctaves || 0,
+        rankTitle: getRankTitle(userStats.totalScore || 0, userStats.roundsPlayed || 0),
         isCurrentUser: p.id === activeStudentId,
         avatarColor: p.avatarColor || 'from-cyan-500 to-blue-600',
         cohortYear: p.cohortYear || 'Class of 2026',
@@ -487,45 +531,54 @@ export async function cloudFetchLeaderboard(
       });
     }
 
+    // Sort in memory (highest total score first, tie-breaker: best streak)
+    entries.sort((a, b) => {
+      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+      return b.bestStreak - a.bestStreak;
+    });
+
     if (entries.length > 0) {
       return mergeGlynJohnsIntoLeaderboard(entries, scope, activeStudentId);
     }
 
     // Fallback: Query from 'scores' collection if students collection has no documents
-    const scoresQuery = query(collection(firestore, 'scores'), orderBy('score', 'desc'), limit(50));
-    const scoresSnapshot = await getDocs(scoresQuery);
-    const scoreMap = new Map<string, LeaderboardEntry>();
+    try {
+      const scoresQuery = query(collection(firestore, 'scores'), orderBy('score', 'desc'), limit(50));
+      const scoresSnapshot = await getDocs(scoresQuery);
+      const scoreMap = new Map<string, LeaderboardEntry>();
 
-    for (const docSnap of scoresSnapshot.docs) {
-      const data = docSnap.data();
-      if (data.timestamp && data.timestamp < PRE_LAUNCH_WIPE_TIMESTAMP) {
-        await deleteDoc(docSnap.ref);
-        continue;
+      for (const docSnap of scoresSnapshot.docs) {
+        const data = docSnap.data();
+        if (data.timestamp && data.timestamp < PRE_LAUNCH_WIPE_TIMESTAMP) {
+          continue;
+        }
+        if (scope !== 'all' && data.mode !== scope) continue;
+        const studentId = data.studentId || docSnap.id;
+        const nickname = data.nickname || 'Student';
+        const score = Number(data.score) || 0;
+        if (!scoreMap.has(studentId) || (scoreMap.get(studentId)!.totalScore < score)) {
+          scoreMap.set(studentId, {
+            rank: 0,
+            id: studentId,
+            name: nickname,
+            totalScore: Number(data.totalScore) || score,
+            roundsPlayed: 1,
+            bestStreak: 1,
+            averageAccuracyOctaves: 0.1,
+            rankTitle: data.rankTitle || 'Frequency Adept',
+            isCurrentUser: studentId === activeStudentId,
+            avatarColor: 'from-cyan-500 to-blue-600',
+            cohortYear: data.cohortYear || 'Class of 2026',
+            scope
+          });
+        }
       }
-      if (scope !== 'all' && data.mode !== scope) continue;
-      const studentId = data.studentId || docSnap.id;
-      const nickname = data.nickname || 'Student';
-      const score = Number(data.score) || 0;
-      if (!scoreMap.has(studentId) || (scoreMap.get(studentId)!.totalScore < score)) {
-        scoreMap.set(studentId, {
-          rank: 0,
-          id: studentId,
-          name: nickname,
-          totalScore: Number(data.totalScore) || score,
-          roundsPlayed: 1,
-          bestStreak: 1,
-          averageAccuracyOctaves: 0.1,
-          rankTitle: data.rankTitle || 'Frequency Adept',
-          isCurrentUser: studentId === activeStudentId,
-          avatarColor: 'from-cyan-500 to-blue-600',
-          cohortYear: data.cohortYear || 'Class of 2026',
-          scope
-        });
-      }
+
+      const fallbackEntries = Array.from(scoreMap.values());
+      return mergeGlynJohnsIntoLeaderboard(fallbackEntries, scope, activeStudentId);
+    } catch {
+      return mergeGlynJohnsIntoLeaderboard([], scope, activeStudentId);
     }
-
-    const fallbackEntries = Array.from(scoreMap.values());
-    return mergeGlynJohnsIntoLeaderboard(fallbackEntries, scope, activeStudentId);
   } catch (e) {
     console.error("Failed to fetch cloud leaderboard:", e);
     return mergeGlynJohnsIntoLeaderboard([], scope, activeStudentId);

@@ -35,7 +35,7 @@ export const AudioTransport: React.FC<AudioTransportProps> = ({
   const [activeSource, setActiveSource] = useState<AudioSourceType>(() => audioEngine.getCurrentSourceType());
   const [internalVolume, setInternalVolume] = useState(0.75);
   const [internalIsMuted, setInternalIsMuted] = useState(false);
-  const [customFileName, setCustomFileName] = useState<string | null>(null);
+  const [customFileName, setCustomFileName] = useState<string | null>(() => audioEngine.getCustomFileName());
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const volume = controlledVolume !== undefined ? controlledVolume : internalVolume;
@@ -45,6 +45,7 @@ export const AudioTransport: React.FC<AudioTransportProps> = ({
   useEffect(() => {
     const unsub = audioEngine.subscribeState((_playing, _mode, srcType) => {
       setActiveSource(srcType);
+      setCustomFileName(audioEngine.getCustomFileName());
     });
     return unsub;
   }, []);
@@ -78,6 +79,14 @@ export const AudioTransport: React.FC<AudioTransportProps> = ({
     await audioEngine.setAudioSource(source);
   };
 
+  const handleCustomAudioClick = () => {
+    if (audioEngine.hasCustomAudio()) {
+      handleSourceChange('custom_file');
+    } else {
+      fileInputRef.current?.click();
+    }
+  };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -88,6 +97,8 @@ export const AudioTransport: React.FC<AudioTransportProps> = ({
     } catch (err) {
       console.error("Failed to load audio file", err);
       alert("Failed to decode audio file. Please try a standard MP3 or WAV file.");
+    } finally {
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -151,7 +162,7 @@ export const AudioTransport: React.FC<AudioTransportProps> = ({
             );
           })}
 
-          {/* Custom File Upload Button */}
+          {/* Custom File Upload / Select Button */}
           <input
             type="file"
             ref={fileInputRef}
@@ -159,20 +170,39 @@ export const AudioTransport: React.FC<AudioTransportProps> = ({
             accept="audio/*"
             className="hidden"
           />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 border border-dashed flex-shrink-0 cursor-pointer ${
-              activeSource === 'custom_file'
-                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 font-semibold'
-                : 'border-studio-700 text-slate-400 hover:text-slate-200 hover:border-slate-500'
-            }`}
-            title="Load your own reference track (MP3, WAV, FLAC, OGG)"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            <span className="truncate max-w-[100px]">
-              {customFileName ? customFileName : "Load Audio"}
-            </span>
-          </button>
+          <div className="flex items-center flex-shrink-0">
+            <button
+              onClick={handleCustomAudioClick}
+              className={`px-2.5 py-1.5 rounded-lg transition-all flex items-center space-x-1.5 border border-dashed flex-shrink-0 cursor-pointer ${
+                activeSource === 'custom_file'
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 font-semibold shadow'
+                  : 'border-studio-700 text-slate-400 hover:text-slate-200 hover:border-slate-500'
+              }`}
+              title={
+                customFileName
+                  ? `Select "${customFileName}"`
+                  : "Load your own reference track (MP3, WAV, FLAC, OGG)"
+              }
+            >
+              <Upload className="w-3.5 h-3.5" />
+              <span className="truncate max-w-[100px]">
+                {customFileName ? customFileName : "Load Audio"}
+              </span>
+            </button>
+            {customFileName && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  fileInputRef.current?.click();
+                }}
+                className="ml-1 p-1 rounded-md text-slate-400 hover:text-cyan-300 hover:bg-studio-800 transition-colors cursor-pointer"
+                title="Upload a different audio file"
+              >
+                <Upload className="w-3 h-3" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Master Volume Slider (Desktop Only - moved to top header on Mobile) */}
