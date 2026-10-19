@@ -19,7 +19,8 @@ import {
   Disc,
   Radio,
   Palette,
-  Upload
+  Upload,
+  Mail
 } from 'lucide-react';
 import { audioEngine } from '../audio/AudioEngine';
 import {
@@ -77,6 +78,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
   const [tab, setTab] = useState<'signin' | 'register'>('signin');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
   const cohortYear = '2026';
   const [sessionDefaultTrack, setSessionDefaultTrack] = useState<AudioSourceType>(() => {
     return currentStudent?.defaultTrack || 'dance_pop';
@@ -180,7 +182,8 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
           password,
           cohortYear,
           tab === 'signin' ? sessionDefaultTrack : 'dance_pop',
-          selectedTheme
+          selectedTheme,
+          tab === 'register' ? email : undefined
         );
         if (!cloudRes.success || !cloudRes.profile) {
           setError(cloudRes.error || 'Cloud authentication failed.');
@@ -229,7 +232,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
 
       // Local Fallback Authentication
       if (tab === 'register') {
-        const res = registerStudent(name, password, cohortYear, 'dance_pop', selectedTheme);
+        const res = registerStudent(name, password, cohortYear, 'dance_pop', selectedTheme, email);
         if (!res.success || !res.profile) {
           setError(res.error || 'Failed to create account.');
           setIsSubmitting(false);
@@ -363,6 +366,11 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
                   <div className="text-sm font-bold text-white flex items-center gap-1.5">
                     <span>{currentStudent.name}</span>
                   </div>
+                  {currentStudent.email && (
+                    <div className="text-[11px] font-mono text-slate-400 truncate">
+                      {currentStudent.email}
+                    </div>
+                  )}
                   <div className="text-xs font-mono text-amber-400 mt-0.5">
                     {currentStudent.stats.totalScore.toLocaleString()} pts &bull; {currentStudent.stats.rankTitle}
                   </div>
@@ -626,6 +634,35 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
               />
             </div>
           </div>
+
+          {/* Email input (Account Creation Only) */}
+          {tab === 'register' && (
+            <div className="space-y-1">
+              <label className="text-xs font-mono text-slate-300 font-semibold block flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-studio-accent" />
+                  <span>Email Address</span>
+                </span>
+                <span className="text-[10px] text-studio-accent font-normal">Daily rank updates & reminders</span>
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-500">
+                  <Mail className="w-4 h-4" />
+                </div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  placeholder="e.g. name@college.ac.uk"
+                  required
+                  className="w-full pl-9 pr-3 py-2.5 bg-studio-950 border border-studio-800 rounded-xl text-sm font-sans text-white placeholder-slate-500 focus:outline-none focus:border-studio-accent transition-colors"
+                />
+              </div>
+              <p className="text-[11px] text-slate-400">
+                You'll receive a friendly daily studio rank report and direct training link.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-1">
             <label className="text-xs font-mono text-slate-300 font-semibold block">

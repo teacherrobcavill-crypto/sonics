@@ -1,7 +1,7 @@
 import { GameMode, RoundResult, UserStats, AudioSourceType } from '../types';
 import { getRankTitle } from './frequencies';
 import { validateName } from './nameValidator';
-import { mergeGlynJohnsIntoLeaderboard } from './glynJohns';
+import { mergeGlynJohnsIntoLeaderboard, GLYN_JOHNS_ID } from './glynJohns';
 
 export const DAILY_ROUND_LIMIT = 20;
 
@@ -43,6 +43,7 @@ export interface StudentProfile {
   cohortYear?: string; // e.g. "Class of 2026", "Alumni (2025)"
   defaultTrack?: AudioSourceType; // Student's unique default reference track
   theme?: AppTheme; // Student's custom UI studio visual theme
+  email?: string; // Student's email for mailing list and daily updates
 }
 
 export type AppTheme = 'cyber' | 'warm_console' | 'slate_minimal' | 'midnight_tape' | 'synthwave';
@@ -114,6 +115,7 @@ export interface LeaderboardEntry {
   avatarColor: string;
   cohortYear?: string;
   scope?: LeaderboardScope;
+  email?: string;
 }
 
 const STORAGE_KEY_PROFILES = 'soniceq_student_profiles_v1';
@@ -302,11 +304,21 @@ export function registerStudent(
   password: string,
   cohortYear: string = '2026',
   defaultTrack: AudioSourceType = 'dance_pop',
-  theme?: AppTheme
+  theme?: AppTheme,
+  email?: string
 ): { success: boolean; profile?: StudentProfile; error?: string } {
   const nameValidation = validateName(name);
   if (!nameValidation.isValid) {
     return { success: false, error: nameValidation.error };
+  }
+
+  const trimmedEmail = (email || '').trim().toLowerCase();
+  if (!trimmedEmail) {
+    return { success: false, error: 'Please enter your email address.' };
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(trimmedEmail)) {
+    return { success: false, error: 'Please enter a valid email address (e.g. name@example.com).' };
   }
 
   const trimmedName = name.trim();
@@ -333,6 +345,7 @@ export function registerStudent(
     id: normalizedKey,
     name: trimmedName,
     password: password,
+    email: trimmedEmail,
     avatarColor: getRandomColor(),
     createdAt: Date.now(),
     stats: {
@@ -709,10 +722,40 @@ export function getLeaderboard(scope: LeaderboardScope = 'all'): LeaderboardEntr
       isCurrentUser: p.id === activeId,
       avatarColor: p.avatarColor || 'from-cyan-500 to-blue-600',
       cohortYear: p.cohortYear || 'Class of 2026',
-      scope
+      scope,
+      email: p.email
     };
   });
 
   // Re-sort and merge benchmark participant Glyn Johns
   return mergeGlynJohnsIntoLeaderboard(entries, scope, activeId);
+}
+
+/**
+ * Exports registered student email addresses and standings as a CSV file.
+ */
+export function exportMailingListCSV(entries: LeaderboardEntry[]): void {
+  const headers = ['Name', 'Email Address', 'Cohort Year', 'Rank Title', 'Total Score', 'Rounds Played', 'Best Streak'];
+  const validRows = entries
+    .filter(e => e.id !== GLYN_JOHNS_ID)
+    .map(e => [
+      `"${(e.name || '').replace(/"/g, '""')}"`,
+      `"${(e.email || '').replace(/"/g, '""')}"`,
+      `"${(e.cohortYear || 'Class of 2026').replace(/"/g, '""')}"`,
+      `"${(e.rankTitle || 'Audio Novice').replace(/"/g, '""')}"`,
+      e.totalScore ?? 0,
+      e.roundsPlayed ?? 0,
+      e.bestStreak ?? 0
+    ]);
+
+  const csvContent = [headers.join(','), ...validRows.map(r => r.join(','))].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `SonicEQ_Student_Mailing_List_${getTodayDateString()}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }

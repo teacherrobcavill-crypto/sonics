@@ -14,7 +14,8 @@ import {
   Layers,
   Compass,
   Volume2,
-  Sliders
+  Sliders,
+  Mail
 } from 'lucide-react';
 import {
   getLeaderboard,
@@ -22,7 +23,8 @@ import {
   StudentProfile,
   LeaderboardScope,
   getStudentModeStats,
-  formatYearLabel
+  formatYearLabel,
+  exportMailingListCSV
 } from '../utils/studentStorage';
 import { cloudFetchLeaderboard, isFirebaseReady } from '../services/firebase';
 import { mergeGlynJohnsIntoLeaderboard } from '../utils/glynJohns';
@@ -162,7 +164,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
           bestStreak: Math.max(baseLeaderboard[idx].bestStreak, studentStats.bestStreak),
           averageAccuracyOctaves: studentStats.averageAccuracyOctaves || baseLeaderboard[idx].averageAccuracyOctaves,
           rankTitle: studentStats.rankTitle || baseLeaderboard[idx].rankTitle,
-          isCurrentUser: true
+          isCurrentUser: true,
+          email: currentStudent.email || baseLeaderboard[idx].email
         };
       } else {
         baseLeaderboard.push({
@@ -177,7 +180,8 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
           isCurrentUser: true,
           avatarColor: currentStudent.avatarColor || 'from-cyan-500 to-blue-600',
           cohortYear: currentStudent.cohortYear || 'Class of 2026',
-          scope: selectedGame
+          scope: selectedGame,
+          email: currentStudent.email
         });
       }
     }
@@ -233,6 +237,15 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
             className={`flex items-center justify-center px-3 py-2 rounded-xl bg-studio-950 hover:bg-studio-850 border border-studio-800 text-slate-300 hover:text-white text-xs font-mono transition-all cursor-pointer shadow-sm ${isMobile ? 'flex-1' : 'shrink-0'}`}
           >
             <span className="truncate">Rank Ladder (24 Ranks)</span>
+          </button>
+
+          <button
+            onClick={() => exportMailingListCSV(rawLeaderboard)}
+            title="Download CSV mailing list with student names, emails, and standings"
+            className={`flex items-center justify-center space-x-1.5 px-3 py-2 rounded-xl bg-studio-950 hover:bg-studio-850 border border-studio-800 text-slate-300 hover:text-white text-xs font-mono transition-all cursor-pointer shadow-sm ${isMobile ? 'flex-1' : 'shrink-0'}`}
+          >
+            <Mail className="w-3.5 h-3.5 text-studio-accent shrink-0" />
+            <span className="truncate">Mailing List</span>
           </button>
 
           {currentStudent && currentStudentStats ? (

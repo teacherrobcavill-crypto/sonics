@@ -95,7 +95,8 @@ export async function cloudLoginOrRegisterStudent(
   password: string,
   cohortYear: string = '2026',
   defaultTrack: AudioSourceType = 'dance_pop',
-  theme?: AppTheme
+  theme?: AppTheme,
+  email?: string
 ): Promise<{ success: boolean; profile?: StudentProfile; error?: string; isNewAccount?: boolean }> {
   const nameValidation = validateName(name);
   if (!nameValidation.isValid) {
@@ -160,11 +161,21 @@ export async function cloudLoginOrRegisterStudent(
       return { success: true, profile: data, isNewAccount: false };
     } else {
       // First-time creation -> Create single permanent account
+      const trimmedEmail = (email || '').trim().toLowerCase();
+      if (!trimmedEmail) {
+        return { success: false, error: 'Please enter your email address to create an account.' };
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        return { success: false, error: 'Please enter a valid email address (e.g. name@example.com).' };
+      }
+
       const today = getTodayDateString();
       const newProfile: StudentProfile = {
         id: normalizedId,
         name: trimmedName,
         password: password,
+        email: trimmedEmail,
         avatarColor: getRandomAvatarColor(),
         createdAt: Date.now(),
         stats: {
@@ -545,7 +556,8 @@ export async function cloudFetchLeaderboard(
         isCurrentUser: p.id === activeStudentId,
         avatarColor: p.avatarColor || 'from-cyan-500 to-blue-600',
         cohortYear: p.cohortYear || 'Class of 2026',
-        scope
+        scope,
+        email: p.email
       });
     }
 
