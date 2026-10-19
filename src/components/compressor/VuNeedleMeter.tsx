@@ -110,28 +110,28 @@ export const VuNeedleMeter: React.FC<VuNeedleMeterProps> = ({ needlePosition, is
     });
 
     // Faceplate Labeling
-    ctx.font = '900 12px "SF Mono", Menlo, Monaco, monospace';
+    ctx.font = '900 11px "SF Mono", Menlo, Monaco, monospace';
     ctx.fillStyle = '#1e293b';
     ctx.textAlign = 'center';
-    ctx.fillText('GAIN REDUCTION dB', pivotX, height * 0.46);
+    ctx.fillText('GAIN REDUCTION dB', pivotX, height * 0.44);
 
-    ctx.font = '700 9px "SF Mono", Menlo, Monaco, monospace';
+    ctx.font = '700 8.5px "SF Mono", Menlo, Monaco, monospace';
     ctx.fillStyle = '#64748b';
-    ctx.fillText('ANSI C16.5 BALLISTICS', pivotX, height * 0.53);
+    ctx.fillText('ANSI C16.5', pivotX, height * 0.52);
 
     // 3. Physical Needle Drawing
     const needleAngle = VUMeterBallistics.positionToAngle(needlePosition) - Math.PI / 2;
-    const needleLength = radius + 6;
+    const needleLength = radius + 4;
 
     const needleTipX = pivotX + Math.cos(needleAngle) * needleLength;
     const needleTipY = pivotY + Math.sin(needleAngle) * needleLength;
 
     // Needle shadow
     ctx.beginPath();
-    ctx.moveTo(pivotX + 3, pivotY + 3);
-    ctx.lineTo(needleTipX + 3, needleTipY + 3);
+    ctx.moveTo(pivotX + 2, pivotY + 2);
+    ctx.lineTo(needleTipX + 2, needleTipY + 2);
     ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2.0;
     ctx.stroke();
 
     // Actual Needle
@@ -139,11 +139,11 @@ export const VuNeedleMeter: React.FC<VuNeedleMeterProps> = ({ needlePosition, is
     ctx.moveTo(pivotX, pivotY);
     ctx.lineTo(needleTipX, needleTipY);
     ctx.strokeStyle = isBypassed ? '#64748b' : '#0f172a';
-    ctx.lineWidth = 2.0;
+    ctx.lineWidth = 1.8;
     ctx.stroke();
 
     // Red Needle Tip Accent
-    const accentStart = radius - 18;
+    const accentStart = radius - 15;
     const tipAccentX = pivotX + Math.cos(needleAngle) * accentStart;
     const tipAccentY = pivotY + Math.sin(needleAngle) * accentStart;
 
@@ -151,31 +151,31 @@ export const VuNeedleMeter: React.FC<VuNeedleMeterProps> = ({ needlePosition, is
     ctx.moveTo(tipAccentX, tipAccentY);
     ctx.lineTo(needleTipX, needleTipY);
     ctx.strokeStyle = isBypassed ? '#94a3b8' : '#e11d48';
-    ctx.lineWidth = 2.5;
+    ctx.lineWidth = 2.2;
     ctx.stroke();
 
     // 4. Heavy Brass / Metal Needle Pivot Hub
-    const hubGrad = ctx.createRadialGradient(pivotX, pivotY, 2, pivotX, pivotY, 22);
+    const hubGrad = ctx.createRadialGradient(pivotX, pivotY, 2, pivotX, pivotY, 18);
     hubGrad.addColorStop(0, '#64748b');
     hubGrad.addColorStop(0.7, '#1e293b');
     hubGrad.addColorStop(1, '#090d16');
 
     ctx.beginPath();
-    ctx.arc(pivotX, pivotY, 22, 0, Math.PI * 2);
+    ctx.arc(pivotX, pivotY, 18, 0, Math.PI * 2);
     ctx.fillStyle = hubGrad;
     ctx.fill();
     ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 1.5;
     ctx.stroke();
   }, [needlePosition, isBypassed]);
 
   return (
-    <div className="relative w-full h-full flex items-center justify-center p-2">
+    <div className="relative w-full h-full flex items-center justify-center p-1">
       <canvas
         ref={canvasRef}
-        width={420}
-        height={220}
-        className="w-full h-auto max-w-[420px] rounded-xl shadow-2xl border-2 border-slate-700/80"
+        width={300}
+        height={170}
+        className="w-full h-auto max-w-[270px] rounded-xl shadow-2xl border-2 border-slate-700/80"
       />
     </div>
   );

@@ -18,7 +18,7 @@ export const CompressorPresetsCard: React.FC<CompressorPresetsCardProps> = ({
   const presets = getPresetsForStem(stem.category);
 
   return (
-    <div className="bg-studio-950/80 border border-studio-800 rounded-2xl p-3 sm:p-3.5 flex flex-col justify-between space-y-3 h-full min-h-[300px] shadow-inner font-mono overflow-hidden">
+    <div className="bg-studio-950/80 border border-studio-800 rounded-2xl p-3 sm:p-3.5 flex flex-col justify-between space-y-2.5 h-full min-h-[300px] shadow-inner font-mono overflow-hidden">
       
       {/* Header */}
       <div className="flex items-center justify-between border-b border-studio-800/80 pb-2 h-9 min-h-[36px] max-h-[36px] flex-shrink-0">
@@ -39,8 +39,8 @@ export const CompressorPresetsCard: React.FC<CompressorPresetsCardProps> = ({
         </span>
       </div>
 
-      {/* Preset Title-Only Buttons */}
-      <div className="flex flex-col space-y-2.5 flex-grow justify-center">
+      {/* 2-Column Preset Title-Only Buttons */}
+      <div className="grid grid-cols-2 gap-2 flex-grow content-center">
         {presets.map((preset) => {
           const isActive = activePresetId === preset.id;
 
@@ -49,18 +49,18 @@ export const CompressorPresetsCard: React.FC<CompressorPresetsCardProps> = ({
               key={preset.id}
               type="button"
               onClick={() => onApplyPreset(preset.params, preset.id)}
-              className={`w-full py-3.5 px-3.5 rounded-xl text-left transition-all border cursor-pointer relative overflow-hidden flex items-center justify-between group active:scale-[0.98] ${
+              className={`py-2.5 px-2.5 rounded-xl text-left transition-all border cursor-pointer relative overflow-hidden flex items-center justify-between group active:scale-[0.98] ${
                 isActive
                   ? 'bg-cyan-500/20 border-cyan-400 text-white shadow-md ring-1 ring-cyan-400/50'
                   : 'bg-studio-900 border-studio-800 text-slate-300 hover:text-white hover:border-slate-700 hover:bg-studio-850'
               }`}
             >
-              <span className="text-xs font-bold tracking-tight truncate">
+              <span className="text-[11px] font-bold tracking-tight truncate">
                 {preset.name}
               </span>
               
               {isActive && (
-                <Check className="w-4 h-4 text-cyan-400 flex-shrink-0 ml-1.5" />
+                <Check className="w-3.5 h-3.5 text-cyan-400 flex-shrink-0 ml-1" />
               )}
             </button>
           );

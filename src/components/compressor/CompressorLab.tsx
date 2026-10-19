@@ -351,8 +351,8 @@ export const CompressorLab: React.FC = () => {
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
             
-            {/* Left Column: Tailored Starting Point Presets */}
-            <div className="lg:col-span-3 flex flex-col h-full">
+            {/* Left Column: Tailored Starting Point Presets (Double Column) */}
+            <div className="lg:col-span-5 flex flex-col h-full">
               <CompressorPresetsCard
                 stem={selectedStem}
                 currentParams={params}
@@ -361,8 +361,8 @@ export const CompressorLab: React.FC = () => {
               />
             </div>
 
-            {/* Center Column: Tri-Mode VU Display Screen & Mode Tabs */}
-            <div className="lg:col-span-6 flex flex-col justify-between space-y-3 bg-studio-950/40 p-2 sm:p-3 rounded-2xl border border-studio-800/80">
+            {/* Center Column: Focused Compact VU Needle Meter & Controls */}
+            <div className="lg:col-span-3 flex flex-col justify-between space-y-3 bg-studio-950/40 p-2 sm:p-2.5 rounded-2xl border border-studio-800/80">
               {/* Display Header Mode Tabs & Controls */}
               <div className="flex items-start justify-between px-1">
                 <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-1.5 pt-1">
@@ -462,7 +462,7 @@ export const CompressorLab: React.FC = () => {
             </div>
 
             {/* Right Column: Output ADSR Envelope (Post Compression with Real-Time Warnings) */}
-            <div className="lg:col-span-3 flex flex-col h-full">
+            <div className="lg:col-span-4 flex flex-col h-full">
               <AdsrEnvelopeCard
                 mode="output"
                 params={params}
