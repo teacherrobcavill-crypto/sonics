@@ -122,7 +122,7 @@ def build_console_email_html(
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SonicEQ Studio Console Dispatch</title>
+  <title>Sonics Studio Console Dispatch</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #030712; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #e2e8f0;">
 
@@ -142,7 +142,7 @@ def build_console_email_html(
                   <!-- Left Rack Screw & Title -->
                   <td align="left" style="vertical-align: middle;">
                     <div style="display: inline-block; vertical-align: middle; width: 14px; height: 14px; border-radius: 50%; background: #334155; border: 1px solid #64748b; color: #94a3b8; font-family: monospace; font-size: 10px; line-height: 14px; text-align: center; margin-right: 10px;">+</div>
-                    <span style="display: inline-block; vertical-align: middle; font-family: 'SF Mono', Menlo, Monaco, monospace; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; color: #38bdf8; text-transform: uppercase;">SONIC EQ &bull; STUDIO CONSOLE</span>
+                    <span style="display: inline-block; vertical-align: middle; font-family: 'SF Mono', Menlo, Monaco, monospace; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; color: #38bdf8; text-transform: uppercase;">SONICS &bull; STUDIO CONSOLE</span>
                   </td>
                   <!-- Right Audio Clock & Status LED -->
                   <td align="right" style="vertical-align: middle;">
@@ -285,7 +285,7 @@ def build_console_email_html(
                     <div style="width: 14px; height: 14px; border-radius: 50%; background: #334155; border: 1px solid #64748b; color: #94a3b8; font-family: monospace; font-size: 10px; line-height: 14px; text-align: center;">+</div>
                   </td>
                   <td align="center" style="font-size: 11px; color: #475569; line-height: 1.5;">
-                    SONIC EQ &bull; AES/EBU MONITORED EAR TRAINING CONSOLE<br>
+                    SONICS &bull; AES/EBU MONITORED EAR TRAINING CONSOLE<br>
                     Maintain safe SPL monitor levels (85 dBA reference) &bull; RJC Music Production
                   </td>
                   <td align="right" width="20">
@@ -309,11 +309,11 @@ def send_via_apple_mail(
     to_email: str,
     subject: str,
     html_content: str,
-    sender: str = "SonicEQ <sonics@rjcmusicproduction.co.uk>"
+    sender: str = "Sonics <sonics@rjcmusicproduction.co.uk>"
 ) -> bool:
     """
     Sends rich HTML email via macOS Mail using the official 'set html content' command
-    from sonics@rjcmusicproduction.co.uk.
+    from Sonics <sonics@rjcmusicproduction.co.uk>.
     """
     escaped_subject = subject.replace('\\', '\\\\').replace('"', '\\"')
     escaped_sender = sender.replace('\\', '\\\\').replace('"', '\\"')
@@ -339,7 +339,7 @@ if __name__ == "__main__":
     recipient = sys.argv[1] if len(sys.argv) > 1 else "bobbycavill@icloud.com"
     day_offset = int(sys.argv[2]) if len(sys.argv) > 2 else 0
 
-    print(f"Generating authentic SonicEQ Studio Console dispatch for {recipient}...")
+    print(f"Generating authentic Sonics Studio Console dispatch for {recipient}...")
     sample_html = build_console_email_html(
         student_name="Bobby Cavill",
         rank=1,
@@ -351,7 +351,7 @@ if __name__ == "__main__":
     )
 
     focus = get_todays_focus(day_offset)
-    subject = f"🎛️ SonicEQ Studio Console: Today's Standing & {focus['badge']}"
+    subject = f"🎛️ Sonics Studio Console: Today's Standing & {focus['badge']}"
 
     print(f"Subject: {subject}")
     print(f"Today's Focus: {focus['title']} ({focus['module']})")
