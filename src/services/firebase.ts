@@ -439,6 +439,24 @@ export async function cloudPurgePreLaunchData(): Promise<{ deletedStudents: numb
 }
 
 /**
+ * Fetch a single student's profile from Firestore by their studentId
+ */
+export async function cloudGetStudentProfile(studentId: string): Promise<StudentProfile | null> {
+  const firestore = getFirebaseDb();
+  if (!firestore) return null;
+
+  try {
+    const studentDocRef = doc(firestore, 'students', studentId);
+    const snap = await getDoc(studentDocRef);
+    if (!snap.exists()) return null;
+    return snap.data() as StudentProfile;
+  } catch (err) {
+    console.warn("Notice in cloudGetStudentProfile:", err);
+    return null;
+  }
+}
+
+/**
  * Fully synchronizes a student's profile, points, modeStats, streaks, and history to Firestore
  */
 export async function cloudSyncStudentProfile(profile: StudentProfile): Promise<boolean> {

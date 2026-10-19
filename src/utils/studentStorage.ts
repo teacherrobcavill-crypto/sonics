@@ -214,6 +214,17 @@ export function setActiveStudentId(id: string | null) {
   }
 }
 
+export function saveStudentProfile(profile: StudentProfile): void {
+  try {
+    const profiles = getStoredProfiles();
+    profiles[profile.id] = profile;
+    saveStoredProfiles(profiles);
+    setActiveStudentId(profile.id);
+  } catch (e) {
+    console.error('Failed to save student profile', e);
+  }
+}
+
 export function getActiveStudent(): StudentProfile | null {
   const activeId = getActiveStudentId();
   if (!activeId) return null;
@@ -541,10 +552,15 @@ export function getRemainingDailyRounds(student: StudentProfile | null, mode: Ga
 export function recordStudentRound(
   studentId: string,
   mode: GameMode,
-  result: RoundResult
+  result: RoundResult,
+  fallbackProfile?: StudentProfile | null
 ): { updatedProfile: StudentProfile; remainingDaily: number } | null {
   const profiles = getStoredProfiles();
-  const profile = profiles[studentId];
+  let profile = profiles[studentId];
+  if (!profile && fallbackProfile && fallbackProfile.id === studentId) {
+    profile = { ...fallbackProfile };
+    profiles[studentId] = profile;
+  }
   if (!profile) return null;
 
   const today = getTodayDateString();
@@ -604,7 +620,7 @@ export function recordStudentRound(
     };
   }
 
-  profile.history = [...profile.history, result];
+  profile.history = [...(profile.history || []), result];
 
   profiles[studentId] = profile;
   saveStoredProfiles(profiles);
@@ -615,10 +631,18 @@ export function recordStudentRound(
   return { updatedProfile: profile, remainingDaily: remaining };
 }
 
-export function addStudentBonusPoints(studentId: string, bonusPoints: number): StudentProfile | null {
+export function addStudentBonusPoints(
+  studentId: string,
+  bonusPoints: number,
+  fallbackProfile?: StudentProfile | null
+): StudentProfile | null {
   if (bonusPoints <= 0) return null;
   const profiles = getStoredProfiles();
-  const profile = profiles[studentId];
+  let profile = profiles[studentId];
+  if (!profile && fallbackProfile && fallbackProfile.id === studentId) {
+    profile = { ...fallbackProfile };
+    profiles[studentId] = profile;
+  }
   if (!profile) return null;
 
   const newScore = profile.stats.totalScore + bonusPoints;

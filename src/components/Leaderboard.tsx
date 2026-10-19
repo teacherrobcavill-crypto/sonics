@@ -155,17 +155,15 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
 
       const idx = baseLeaderboard.findIndex(e => e.id === currentStudent.id);
       if (idx >= 0) {
-        if (studentStats.totalScore > baseLeaderboard[idx].totalScore) {
-          baseLeaderboard[idx] = {
-            ...baseLeaderboard[idx],
-            totalScore: studentStats.totalScore,
-            roundsPlayed: Math.max(baseLeaderboard[idx].roundsPlayed, studentStats.roundsPlayed),
-            bestStreak: Math.max(baseLeaderboard[idx].bestStreak, studentStats.bestStreak),
-            averageAccuracyOctaves: studentStats.averageAccuracyOctaves,
-            rankTitle: studentStats.rankTitle,
-            isCurrentUser: true
-          };
-        }
+        baseLeaderboard[idx] = {
+          ...baseLeaderboard[idx],
+          totalScore: Math.max(baseLeaderboard[idx].totalScore, studentStats.totalScore),
+          roundsPlayed: Math.max(baseLeaderboard[idx].roundsPlayed, studentStats.roundsPlayed),
+          bestStreak: Math.max(baseLeaderboard[idx].bestStreak, studentStats.bestStreak),
+          averageAccuracyOctaves: studentStats.averageAccuracyOctaves || baseLeaderboard[idx].averageAccuracyOctaves,
+          rankTitle: studentStats.rankTitle || baseLeaderboard[idx].rankTitle,
+          isCurrentUser: true
+        };
       } else {
         baseLeaderboard.push({
           rank: 0,

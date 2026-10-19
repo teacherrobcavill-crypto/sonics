@@ -45,14 +45,18 @@ import {
   updateStudentTheme,
   purgePreLaunchStorage,
   isPreLaunchPeriod,
-  getStoredProfiles
+  getStoredProfiles,
+  saveStudentProfile,
+  getActiveStudentId,
+  setActiveStudentId
 } from './utils/studentStorage';
 import {
   cloudUpdateStudentDefaultTrack,
   cloudUpdateStudentTheme,
   isFirebaseReady,
   cloudPurgePreLaunchData,
-  cloudSyncStudentProfile
+  cloudSyncStudentProfile,
+  cloudGetStudentProfile
 } from './services/firebase';
 
 type AppTab = GameMode | 'leaderboard';
@@ -75,6 +79,23 @@ export const App: React.FC = () => {
         if (profile.stats && profile.stats.totalScore > 0) {
           cloudSyncStudentProfile(profile).catch(() => {});
         }
+      }
+    }
+  }, []);
+
+  // Auto-restore active student profile from Cloud Firestore or localStorage on startup
+  useEffect(() => {
+    const activeId = getActiveStudentId();
+    if (activeId && !currentStudent) {
+      const localProfiles = getStoredProfiles();
+      if (localProfiles[activeId]) {
+        handleStudentChanged(localProfiles[activeId]);
+      } else if (isFirebaseReady()) {
+        cloudGetStudentProfile(activeId).then(profile => {
+          if (profile) {
+            handleStudentChanged(profile);
+          }
+        });
       }
     }
   }, []);
@@ -206,8 +227,9 @@ export const App: React.FC = () => {
   const handleStudentChanged = (student: StudentProfile | null) => {
     setCurrentStudent(student);
     if (student) {
-      setStats(student.stats);
-      setHistory(student.history);
+      saveStudentProfile(student);
+      setStats({ ...student.stats });
+      setHistory([...(student.history || [])]);
       if (student.defaultTrack) {
         audioEngine.setAudioSource(student.defaultTrack);
       }
@@ -216,6 +238,7 @@ export const App: React.FC = () => {
         saveTheme(student.theme);
       }
     } else {
+      setActiveStudentId(null);
       setStats({
         totalScore: 0,
         roundsPlayed: 0,
@@ -247,7 +270,7 @@ export const App: React.FC = () => {
     setLatestResult(result);
 
     if (currentStudent && activeTab !== 'leaderboard') {
-      const recorded = recordStudentRound(currentStudent.id, activeTab as GameMode, result);
+      const recorded = recordStudentRound(currentStudent.id, activeTab as GameMode, result, currentStudent);
       if (recorded) {
         setCurrentStudent({ ...recorded.updatedProfile });
         setStats({ ...recorded.updatedProfile.stats });
@@ -293,7 +316,7 @@ export const App: React.FC = () => {
     if (bonusPoints <= 0) return;
 
     if (currentStudent) {
-      const updated = addStudentBonusPoints(currentStudent.id, bonusPoints);
+      const updated = addStudentBonusPoints(currentStudent.id, bonusPoints, currentStudent);
       if (updated) {
         setCurrentStudent({ ...updated });
         setStats({ ...updated.stats });

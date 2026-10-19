@@ -29,6 +29,7 @@ import {
   resetStudentAccount,
   getStoredProfiles,
   setActiveStudentId,
+  saveStudentProfile,
   updateStudentDefaultTrack,
   AppTheme,
   THEME_OPTIONS,
@@ -211,7 +212,7 @@ export const StudentAuthModal: React.FC<StudentAuthModalProps> = ({
         saveTheme(activeTheme);
         if (onThemeChanged) onThemeChanged(activeTheme);
 
-        setActiveStudentId(cloudRes.profile.id);
+        saveStudentProfile(cloudRes.profile);
         onStudentChanged(cloudRes.profile);
         const trackLabel = TRACK_OPTIONS.find(t => t.id === sessionDefaultTrack)?.label || (sessionDefaultTrack === 'custom_file' ? (customFileName || 'Custom Audio') : sessionDefaultTrack);
         setSuccessMsg(
