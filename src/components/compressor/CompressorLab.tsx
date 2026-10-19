@@ -177,7 +177,25 @@ export const CompressorLab: React.FC = () => {
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+      const copy = arrayBuffer.slice(0);
+      const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
+        let settled = false;
+        try {
+          const promise = ctx.decodeAudioData(
+            copy,
+            (buf) => { if (!settled) { settled = true; resolve(buf); } },
+            (err) => { if (!settled) { settled = true; reject(err); } }
+          );
+          if (promise && typeof promise.then === 'function') {
+            promise.then(
+              (buf) => { if (!settled) { settled = true; resolve(buf); } },
+              (err) => { if (!settled) { settled = true; reject(err); } }
+            );
+          }
+        } catch (err) {
+          if (!settled) { settled = true; reject(err); }
+        }
+      });
       currentBufferRef.current = audioBuffer;
       setCustomFileName(file.name);
 
@@ -324,8 +342,10 @@ export const CompressorLab: React.FC = () => {
             type="file"
             ref={fileInputRef}
             onChange={handleFileUpload}
-            accept="audio/*"
-            className="hidden"
+            accept="audio/*,.mp3,.wav,.wave,.ogg,.flac,.m4a,.aac,.aif,.aiff"
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden="true"
           />
           <button
             type="button"
