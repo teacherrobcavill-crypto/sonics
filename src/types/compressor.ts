@@ -4,26 +4,20 @@
  */
 
 export interface CompressorParams {
-  inputGainDb: number;       // -24.0 dB to +24.0 dB (default: 0.0)
   thresholdDb: number;       // -60.0 dB to 0.0 dBFS (default: -18.0)
-  ratio: number;             // 1.0 to 20.0 (and 50 for limiting, default: 4.0)
+  ratio: number;             // 1.0 to 20.0 (default: 4.0)
   attackMs: number;          // 0.1 ms to 100.0 ms (default: 10.0)
   releaseMs: number;         // 10.0 ms to 1000.0 ms (default: 100.0)
-  makeupGainDb: number;      // -24.0 dB to +24.0 dB (default: 0.0)
-  outputGainDb: number;      // -24.0 dB to +24.0 dB (default: 0.0)
   kneeDb: number;            // 0.0 dB to 24.0 dB (default: 4.0 dB quadratic soft-knee)
   autoGain: boolean;         // Auto-gain compensation mode
   bypassed: boolean;         // Studio hardware bypass switch
 }
 
 export const DEFAULT_COMPRESSOR_PARAMS: CompressorParams = {
-  inputGainDb: 0.0,
   thresholdDb: -18.0,
   ratio: 4.0,
   attackMs: 10.0,
   releaseMs: 100.0,
-  makeupGainDb: 0.0,
-  outputGainDb: 0.0,
   kneeDb: 4.0,
   autoGain: false,
   bypassed: false
@@ -40,7 +34,7 @@ export interface CompressorTelemetry {
   outputRmsR: number;
   gainReductionDb: number;   // Instantaneous gain reduction in dB (<= 0)
   avgGainReductionDb: number;// 300ms averaged gain reduction in dB (>= 0)
-  vuNeedlePosition: number;  // 0.0 (rest / 0dB) to 1.0 (full deflection / -20dB)
+  vuNeedlePosition: number;  // 0.0 (rest / 0dB on right) to 1.0 (full deflection / -20dB on left)
 }
 
 export type CompressorDisplayMode = 'vu' | 'bars' | 'wave';
@@ -48,9 +42,9 @@ export type CompressorDisplayMode = 'vu' | 'bars' | 'wave';
 export interface CompressorStem {
   id: string;
   name: string;
-  category: 'kick' | 'snare' | 'bass' | 'vocal' | 'guitar' | 'drums' | 'custom';
+  category: 'kick' | 'snare' | 'bass' | 'drums' | 'custom';
   description: string;
   tips: string;
   suggestedParams: Partial<CompressorParams>;
-  audioUrl?: string; // Built-in Web Audio synthesis or audio asset
+  audioUrl?: string;
 }

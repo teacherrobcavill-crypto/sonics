@@ -63,12 +63,14 @@ export class VUMeterBallistics {
   /**
    * Converts normalized needle position (0.0 to 1.0) to needle angle in radians
    * for a +/- 43 degree sweep on an analog meter face.
+   * Standard gain reduction meters rest at 0 dB on the RIGHT (+43 deg)
+   * and deflect downwards to the LEFT (-43 deg) when compressing.
    */
   public static positionToAngle(normalizedPos: number): number {
     const maxAngleDeg = 43.0;
-    // 0.0 -> -43 deg (pointing to 0 dB / rest on left), 1.0 -> +43 deg (pointing to -20 dB on right)
-    // Note: On gain reduction meters, 0 dB is typically on the left and -20 dB is on the right
-    const angleDeg = -maxAngleDeg + (normalizedPos * (2.0 * maxAngleDeg));
+    // 0.0 -> +43 deg (rest at 0 dB on the RIGHT)
+    // 1.0 -> -43 deg (full compression -20 dB on the LEFT)
+    const angleDeg = maxAngleDeg - (normalizedPos * (2.0 * maxAngleDeg));
     return (angleDeg * Math.PI) / 180.0;
   }
 }

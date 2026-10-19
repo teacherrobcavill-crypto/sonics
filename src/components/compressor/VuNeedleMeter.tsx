@@ -61,14 +61,14 @@ export const VuNeedleMeter: React.FC<VuNeedleMeterProps> = ({ needlePosition, is
       { db: 20, label: '20', isMajor: true }
     ];
 
-    // Red compression danger arc (-10 dB to -20 dB)
+    // Red compression danger arc (-10 dB to -20 dB, on the left)
     const startDangerNorm = VUMeterBallistics.mapGainReductionToNormalized(-10);
     const endDangerNorm = VUMeterBallistics.mapGainReductionToNormalized(-20);
     const startDangerAngle = VUMeterBallistics.positionToAngle(startDangerNorm) - Math.PI / 2;
     const endDangerAngle = VUMeterBallistics.positionToAngle(endDangerNorm) - Math.PI / 2;
 
     ctx.beginPath();
-    ctx.arc(pivotX, pivotY, radius + 2, startDangerAngle, endDangerAngle);
+    ctx.arc(pivotX, pivotY, radius + 2, endDangerAngle, startDangerAngle);
     ctx.strokeStyle = '#dc2626';
     ctx.lineWidth = 5;
     ctx.stroke();

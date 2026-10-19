@@ -229,12 +229,6 @@ export const CompressorLab: React.FC = () => {
     setParams(prev => ({ ...prev, [key]: value }));
   };
 
-  // Helper meter height percentage
-  const inMeterPctL = Math.max(0, Math.min(100, ((telemetry.inputRmsL + 48) / 54) * 100));
-  const inMeterPctR = Math.max(0, Math.min(100, ((telemetry.inputRmsR + 48) / 54) * 100));
-  const outMeterPctL = Math.max(0, Math.min(100, ((telemetry.outputRmsL + 48) / 54) * 100));
-  const outMeterPctR = Math.max(0, Math.min(100, ((telemetry.outputRmsR + 48) / 54) * 100));
-
   return (
     <div className="space-y-4 max-w-5xl mx-auto font-sans text-slate-100 animate-fade-in">
       {/* 1. Hardware Rack Console Top Header */}
@@ -366,213 +360,124 @@ export const CompressorLab: React.FC = () => {
         <div className="absolute bottom-3 left-3 w-3 h-3 rounded-full bg-slate-700/60 border border-slate-600 flex items-center justify-center text-[9px] font-mono text-slate-400">+</div>
         <div className="absolute bottom-3 right-3 w-3 h-3 rounded-full bg-slate-700/60 border border-slate-600 flex items-center justify-center text-[9px] font-mono text-slate-400">+</div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          
-          {/* LEFT: Input Trim Fader & Stereo Level Meter */}
-          <div className="lg:col-span-2 flex flex-col items-center justify-between p-3 bg-studio-950/70 border border-studio-800/80 rounded-2xl shadow-inner space-y-3">
-            <span className="text-[10px] font-mono font-bold tracking-wider text-cyan-400 uppercase">
-              INPUT TRIM
+        {/* Main Hardware Display & 4 Precision Controls */}
+        <div className="flex flex-col space-y-6">
+          {/* Display Header Mode Tabs */}
+          <div className="flex items-center justify-between px-2">
+            <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-1.5">
+              <Volume2 className="w-3.5 h-3.5 text-studio-accent" />
+              <span>DYNAMIC GAIN REDUCTION MONITOR</span>
             </span>
 
-            {/* Fader & Meters Container */}
-            <div className="flex items-center space-x-2 h-44 sm:h-52">
-              {/* Stereo Level Meter */}
-              <div className="flex space-x-1 h-full py-1">
-                <div className="w-2.5 h-full bg-studio-900 rounded-full border border-studio-800 p-0.5 flex flex-col justify-end overflow-hidden">
-                  <div className="w-full bg-gradient-to-t from-emerald-500 via-cyan-400 to-amber-400 rounded-full" style={{ height: `${inMeterPctL}%` }} />
-                </div>
-                <div className="w-2.5 h-full bg-studio-900 rounded-full border border-studio-800 p-0.5 flex flex-col justify-end overflow-hidden">
-                  <div className="w-full bg-gradient-to-t from-emerald-500 via-cyan-400 to-amber-400 rounded-full" style={{ height: `${inMeterPctR}%` }} />
-                </div>
-              </div>
-
-              {/* Vertical Fader */}
-              <input
-                type="range"
-                min="-24"
-                max="24"
-                step="0.5"
-                value={params.inputGainDb}
-                onChange={e => updateParam('inputGainDb', parseFloat(e.target.value))}
-                className="h-full -rotate-90 w-44 cursor-pointer accent-cyan-400"
-              />
-            </div>
-
-            {/* Value Badge */}
-            <div className="px-2 py-0.5 rounded bg-studio-900 border border-studio-800 text-[10px] font-mono font-black text-white">
-              {params.inputGainDb > 0 ? `+${params.inputGainDb.toFixed(1)}` : params.inputGainDb.toFixed(1)} dB
-            </div>
-          </div>
-
-          {/* CENTER: Tri-Mode Display + 5 Precision Rotary Knobs */}
-          <div className="lg:col-span-8 flex flex-col justify-between space-y-5">
-            {/* Display Header Mode Tabs */}
-            <div className="flex items-center justify-between px-2">
-              <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-1.5">
-                <Volume2 className="w-3.5 h-3.5 text-studio-accent" />
-                <span>DYNAMIC GAIN REDUCTION MONITOR</span>
-              </span>
-
-              {/* 3-Mode Selector Tabs */}
-              <div className="flex p-0.5 bg-studio-950 rounded-xl border border-studio-800 text-[10px] font-mono font-bold">
-                <button
-                  type="button"
-                  onClick={() => setDisplayMode('vu')}
-                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                    displayMode === 'vu' ? 'bg-amber-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Gauge className="w-3 h-3" />
-                  <span>VU</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDisplayMode('bars')}
-                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                    displayMode === 'bars' ? 'bg-cyan-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <BarChart2 className="w-3 h-3" />
-                  <span>BARS</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDisplayMode('wave')}
-                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                    displayMode === 'wave' ? 'bg-studio-accent text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <Activity className="w-3 h-3" />
-                  <span>WAVE</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Tri-Mode Display Screen */}
-            <div className="h-56 w-full flex items-center justify-center">
-              {displayMode === 'vu' && (
-                <VuNeedleMeter
-                  needlePosition={telemetry.vuNeedlePosition}
-                  isBypassed={params.bypassed}
-                />
-              )}
-              {displayMode === 'bars' && (
-                <DualBarMeterView
-                  telemetry={telemetry}
-                  isBypassed={params.bypassed}
-                />
-              )}
-              {displayMode === 'wave' && (
-                <WaveformScopeView
-                  telemetry={telemetry}
-                  isBypassed={params.bypassed}
-                />
-              )}
-            </div>
-
-            {/* 5 Precision Rotary Knobs */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2 border-t border-studio-800/80">
-              <RotaryKnob
-                label="Threshold"
-                value={params.thresholdDb}
-                min={-60}
-                max={0}
-                step={0.5}
-                defaultValue={-18}
-                unit=" dB"
-                color="#00f0ff"
-                onChange={v => updateParam('thresholdDb', v)}
-              />
-
-              <RotaryKnob
-                label="Ratio"
-                value={params.ratio}
-                min={1.0}
-                max={20.0}
-                step={0.1}
-                defaultValue={4.0}
-                color="#38bdf8"
-                onChange={v => updateParam('ratio', v)}
-                formatValue={v => (v >= 20 ? '∞:1' : `${v.toFixed(1)}:1`)}
-              />
-
-              <RotaryKnob
-                label="Attack"
-                value={params.attackMs}
-                min={0.1}
-                max={100.0}
-                step={0.1}
-                isLogarithmic
-                defaultValue={10.0}
-                color="#fbbf24"
-                onChange={v => updateParam('attackMs', v)}
-                formatValue={v => (v < 1.0 ? `${v.toFixed(1)} ms` : `${v.toFixed(0)} ms`)}
-              />
-
-              <RotaryKnob
-                label="Release"
-                value={params.releaseMs}
-                min={10.0}
-                max={1000.0}
-                step={1.0}
-                isLogarithmic
-                defaultValue={100.0}
-                color="#f59e0b"
-                onChange={v => updateParam('releaseMs', v)}
-                formatValue={v => `${v.toFixed(0)} ms`}
-              />
-
-              <RotaryKnob
-                label="Makeup Gain"
-                value={params.makeupGainDb}
-                min={-24.0}
-                max={24.0}
-                step={0.5}
-                defaultValue={0.0}
-                unit=" dB"
-                color="#10b981"
-                onChange={v => updateParam('makeupGainDb', v)}
-                formatValue={v => (v > 0 ? `+${v.toFixed(1)} dB` : `${v.toFixed(1)} dB`)}
-              />
+            {/* 3-Mode Selector Tabs */}
+            <div className="flex p-0.5 bg-studio-950 rounded-xl border border-studio-800 text-[10px] font-mono font-bold">
+              <button
+                type="button"
+                onClick={() => setDisplayMode('vu')}
+                className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                  displayMode === 'vu' ? 'bg-amber-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Gauge className="w-3 h-3" />
+                <span>VU</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDisplayMode('bars')}
+                className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                  displayMode === 'bars' ? 'bg-cyan-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <BarChart2 className="w-3 h-3" />
+                <span>BARS</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDisplayMode('wave')}
+                className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
+                  displayMode === 'wave' ? 'bg-studio-accent text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                <Activity className="w-3 h-3" />
+                <span>WAVE</span>
+              </button>
             </div>
           </div>
 
-          {/* RIGHT: Output Trim Fader & Stereo Level Meter */}
-          <div className="lg:col-span-2 flex flex-col items-center justify-between p-3 bg-studio-950/70 border border-studio-800/80 rounded-2xl shadow-inner space-y-3">
-            <span className="text-[10px] font-mono font-bold tracking-wider text-emerald-400 uppercase">
-              OUTPUT TRIM
-            </span>
-
-            {/* Fader & Meters Container */}
-            <div className="flex items-center space-x-2 h-44 sm:h-52">
-              {/* Vertical Fader */}
-              <input
-                type="range"
-                min="-24"
-                max="24"
-                step="0.5"
-                value={params.outputGainDb}
-                onChange={e => updateParam('outputGainDb', parseFloat(e.target.value))}
-                className="h-full -rotate-90 w-44 cursor-pointer accent-emerald-400"
+          {/* Tri-Mode Display Screen */}
+          <div className="h-56 sm:h-64 w-full flex items-center justify-center">
+            {displayMode === 'vu' && (
+              <VuNeedleMeter
+                needlePosition={telemetry.vuNeedlePosition}
+                isBypassed={params.bypassed}
               />
-
-              {/* Stereo Level Meter */}
-              <div className="flex space-x-1 h-full py-1">
-                <div className="w-2.5 h-full bg-studio-900 rounded-full border border-studio-800 p-0.5 flex flex-col justify-end overflow-hidden">
-                  <div className="w-full bg-gradient-to-t from-emerald-500 via-cyan-400 to-amber-400 rounded-full" style={{ height: `${outMeterPctL}%` }} />
-                </div>
-                <div className="w-2.5 h-full bg-studio-900 rounded-full border border-studio-800 p-0.5 flex flex-col justify-end overflow-hidden">
-                  <div className="w-full bg-gradient-to-t from-emerald-500 via-cyan-400 to-amber-400 rounded-full" style={{ height: `${outMeterPctR}%` }} />
-                </div>
-              </div>
-            </div>
-
-            {/* Value Badge */}
-            <div className="px-2 py-0.5 rounded bg-studio-900 border border-studio-800 text-[10px] font-mono font-black text-white">
-              {params.outputGainDb > 0 ? `+${params.outputGainDb.toFixed(1)}` : params.outputGainDb.toFixed(1)} dB
-            </div>
+            )}
+            {displayMode === 'bars' && (
+              <DualBarMeterView
+                telemetry={telemetry}
+                isBypassed={params.bypassed}
+              />
+            )}
+            {displayMode === 'wave' && (
+              <WaveformScopeView
+                telemetry={telemetry}
+                isBypassed={params.bypassed}
+              />
+            )}
           </div>
 
+          {/* 4 Precision Rotary Knobs */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 pt-4 pb-1 border-t border-studio-800/80 justify-items-center">
+            <RotaryKnob
+              label="Threshold"
+              value={params.thresholdDb}
+              min={-60}
+              max={0}
+              step={0.5}
+              defaultValue={-18}
+              unit=" dB"
+              color="#00f0ff"
+              onChange={v => updateParam('thresholdDb', v)}
+            />
+
+            <RotaryKnob
+              label="Ratio"
+              value={params.ratio}
+              min={1.0}
+              max={20.0}
+              step={0.1}
+              defaultValue={4.0}
+              color="#38bdf8"
+              onChange={v => updateParam('ratio', v)}
+              formatValue={v => (v >= 20 ? '∞:1' : `${v.toFixed(1)}:1`)}
+            />
+
+            <RotaryKnob
+              label="Attack"
+              value={params.attackMs}
+              min={0.1}
+              max={100.0}
+              step={0.1}
+              isLogarithmic
+              defaultValue={10.0}
+              color="#fbbf24"
+              onChange={v => updateParam('attackMs', v)}
+              formatValue={v => (v < 1.0 ? `${v.toFixed(1)} ms` : `${v.toFixed(0)} ms`)}
+            />
+
+            <RotaryKnob
+              label="Release"
+              value={params.releaseMs}
+              min={10.0}
+              max={1000.0}
+              step={1.0}
+              isLogarithmic
+              defaultValue={100.0}
+              color="#f59e0b"
+              onChange={v => updateParam('releaseMs', v)}
+              formatValue={v => `${v.toFixed(0)} ms`}
+            />
+          </div>
         </div>
       </div>
 

@@ -11,8 +11,7 @@ export const COMPRESSOR_STEMS: CompressorStem[] = [
       thresholdDb: -16,
       ratio: 4.0,
       attackMs: 25.0,
-      releaseMs: 80.0,
-      makeupGainDb: 3.5
+      releaseMs: 80.0
     }
   },
   {
@@ -25,8 +24,7 @@ export const COMPRESSOR_STEMS: CompressorStem[] = [
       thresholdDb: -14,
       ratio: 5.0,
       attackMs: 8.0,
-      releaseMs: 140.0,
-      makeupGainDb: 4.0
+      releaseMs: 140.0
     }
   },
   {
@@ -39,36 +37,7 @@ export const COMPRESSOR_STEMS: CompressorStem[] = [
       thresholdDb: -20,
       ratio: 4.0,
       attackMs: 15.0,
-      releaseMs: 200.0,
-      makeupGainDb: 5.0
-    }
-  },
-  {
-    id: 'vocal',
-    name: 'Lead Studio Vocal',
-    category: 'vocal',
-    description: 'Dynamic pop/rock vocal passage moving from intimate verses to belted chorus peaks.',
-    tips: 'Smooth soft-knee with medium-fast attack (5–10ms) and ~150ms release keeps vocals upfront without audible breathing.',
-    suggestedParams: {
-      thresholdDb: -22,
-      ratio: 3.5,
-      attackMs: 6.0,
-      releaseMs: 160.0,
-      makeupGainDb: 6.0
-    }
-  },
-  {
-    id: 'guitar',
-    name: 'Strummed Acoustic Guitar',
-    category: 'guitar',
-    description: 'Steel-string acoustic rhythm guitar strumming with sharp plectrum peaks.',
-    tips: 'Slow attack (30ms) allows pick strum texture to sparkle while compressing body boominess.',
-    suggestedParams: {
-      thresholdDb: -18,
-      ratio: 3.0,
-      attackMs: 30.0,
-      releaseMs: 120.0,
-      makeupGainDb: 3.0
+      releaseMs: 200.0
     }
   },
   {
@@ -81,8 +50,7 @@ export const COMPRESSOR_STEMS: CompressorStem[] = [
       thresholdDb: -15,
       ratio: 2.5,
       attackMs: 30.0,
-      releaseMs: 100.0,
-      makeupGainDb: 2.5
+      releaseMs: 100.0
     }
   }
 ];
@@ -153,31 +121,43 @@ export function generateProceduralStemAudio(ctx: AudioContext, stemId: string): 
       }
     }
   } else if (stemId === 'bass') {
-    // P-bass line in A minor (A1, C2, D2, E2, G2)
+    // P-bass line in A minor (A1, C2, D2, E2, G2) - smoothly enveloped with zero clicks
     const notes = [
-      { time: 0.0, freq: 55.0, dur: 0.8, vel: 0.95 }, // A1
-      { time: 1.0, freq: 55.0, dur: 0.4, vel: 0.75 },
-      { time: 1.5, freq: 65.4, dur: 0.4, vel: 0.85 }, // C2
-      { time: 2.0, freq: 73.4, dur: 0.8, vel: 0.90 }, // D2
-      { time: 3.0, freq: 82.4, dur: 0.5, vel: 0.80 }, // E2
-      { time: 3.5, freq: 98.0, dur: 0.4, vel: 0.70 }, // G2
+      { time: 0.0, freq: 55.0, dur: 0.85, vel: 0.95 }, // A1
+      { time: 1.0, freq: 55.0, dur: 0.45, vel: 0.75 },
+      { time: 1.5, freq: 65.4, dur: 0.45, vel: 0.85 }, // C2
+      { time: 2.0, freq: 73.4, dur: 0.85, vel: 0.90 }, // D2
+      { time: 3.0, freq: 82.4, dur: 0.50, vel: 0.80 }, // E2
+      { time: 3.5, freq: 98.0, dur: 0.45, vel: 0.70 }, // G2
     ];
+
+    const attackSamples = Math.floor(0.006 * sampleRate); // 6ms soft attack ramp
 
     for (let bar = 0; bar < loopBars; bar++) {
       const barOffset = bar * 4 * beatSec;
       for (const n of notes) {
         const startSample = Math.floor((barOffset + n.time * beatSec) * sampleRate);
         const noteSamples = Math.floor(n.dur * beatSec * sampleRate);
+        const releaseSamples = Math.min(noteSamples * 0.3, Math.floor(0.025 * sampleRate)); // 25ms cosine fadeout
 
         for (let i = 0; i < noteSamples && (startSample + i) < totalSamples; ++i) {
           const t = i / sampleRate;
-          // Rich bass harmonics (fundamental + 2nd + 3rd harmonic)
           const f = n.freq;
+
+          // Envelope: anti-click attack, natural body decay, smooth cosine release to zero
+          let env = Math.exp(-t * 2.8);
+          if (i < attackSamples) {
+            env *= (i / attackSamples);
+          } else if (i >= noteSamples - releaseSamples) {
+            const relProgress = (noteSamples - i) / releaseSamples;
+            env *= 0.5 * (1 - Math.cos(Math.PI * relProgress));
+          }
+
+          // Rich analog bass harmonics with soft saturation
           const h1 = Math.sin(2.0 * Math.PI * f * t);
-          const h2 = Math.sin(4.0 * Math.PI * f * t) * 0.45;
-          const h3 = Math.sin(6.0 * Math.PI * f * t) * 0.20;
-          const pluck = Math.exp(-t * 2.5);
-          const sample = (h1 + h2 + h3) * pluck * n.vel * 0.75;
+          const h2 = Math.sin(4.0 * Math.PI * f * t) * 0.42;
+          const h3 = Math.sin(6.0 * Math.PI * f * t) * 0.18;
+          const sample = Math.tanh((h1 + h2 + h3) * 1.2) * env * n.vel * 0.65;
 
           left[startSample + i] += sample;
           right[startSample + i] += sample;

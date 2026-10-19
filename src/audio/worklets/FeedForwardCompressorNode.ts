@@ -5,6 +5,7 @@ import { VUMeterBallistics } from '../../utils/compressorBallistics';
 export class FeedForwardCompressorNode {
   private ctx: AudioContext;
   private workletNode: AudioWorkletNode | null = null;
+  private safetyLimiter: DynamicsCompressorNode | null = null;
   private ballistics: VUMeterBallistics;
   private telemetryCallback: ((t: CompressorTelemetry) => void) | null = null;
   private lastTelemetryTime: number = 0;
@@ -60,6 +61,16 @@ export class FeedForwardCompressorNode {
         }
       };
 
+      // Brickwall safety limiter to prevent ear damage
+      this.safetyLimiter = this.ctx.createDynamicsCompressor();
+      this.safetyLimiter.threshold.setValueAtTime(-0.5, this.ctx.currentTime);
+      this.safetyLimiter.knee.setValueAtTime(0, this.ctx.currentTime);
+      this.safetyLimiter.ratio.setValueAtTime(20, this.ctx.currentTime);
+      this.safetyLimiter.attack.setValueAtTime(0.001, this.ctx.currentTime);
+      this.safetyLimiter.release.setValueAtTime(0.02, this.ctx.currentTime);
+
+      this.workletNode.connect(this.safetyLimiter);
+
       this.setParameters(this.currentParams);
       this.isReady = true;
     } catch (err) {
@@ -72,7 +83,7 @@ export class FeedForwardCompressorNode {
   }
 
   public getOutputNode(): AudioNode | null {
-    return this.workletNode;
+    return this.safetyLimiter || this.workletNode;
   }
 
   public setParameters(params: Partial<CompressorParams>): void {

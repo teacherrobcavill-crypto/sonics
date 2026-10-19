@@ -51,8 +51,6 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       const msg = e.data;
       if (msg.type === 'setParameters') {
         const p = msg.params;
-        this.currentInputGainDb = p.inputGainDb;
-        this.inputGainLinear = Math.pow(10.0, p.inputGainDb / 20.0);
         this.threshold = p.thresholdDb;
         this.ratio = Math.max(1.0, p.ratio);
         this.slope = (this.ratio >= 50.0) ? 0.0 : (1.0 / this.ratio);
@@ -63,8 +61,6 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         this.alphaAtt = Math.exp(-1.0 / (attSec * this.fs));
         this.alphaRel = Math.exp(-1.0 / (relSec * this.fs));
 
-        this.makeupGainLinear = Math.pow(10.0, (p.makeupGainDb || 0.0) / 20.0);
-        this.outputGainLinear = Math.pow(10.0, (p.outputGainDb || 0.0) / 20.0);
         this.bypassed = Boolean(p.bypassed);
         this.autoGain = Boolean(p.autoGain);
         this.attackMs = p.attackMs || 10.0;
@@ -163,9 +159,9 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       const pwrPre = 0.5 * (rawL * rawL + rawR * rawR);
       this.preGainEnergy300 = this.alpha300 * this.preGainEnergy300 + (1.0 - this.alpha300) * pwrPre;
 
-      // 1. Input Trim Gain
-      const inL = rawL * this.inputGainLinear;
-      const inR = rawR * this.inputGainLinear;
+      // 1. Direct Input
+      const inL = rawL;
+      const inR = rawR;
 
       // Meter accumulators
       this.inPeakL = Math.max(this.inPeakL, Math.abs(inL));
@@ -192,11 +188,15 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
 
       // 5. Total VCA Gain
       const grLinear = Math.pow(10.0, this.envelopeDb / 20.0);
-      const vcaGain = grLinear * this.makeupGainLinear * autoGainLinear;
+      const vcaGain = grLinear * autoGainLinear;
 
-      // 6. Output Trim Gain
-      const resL = inL * vcaGain * this.outputGainLinear;
-      const resR = inR * vcaGain * this.outputGainLinear;
+      // 6. Direct Output with Failsafe Ear-Protection Ceiling (-0.5 dBFS / 0.95 amplitude)
+      // Clamps audio so transients or boosts never blast ears or cause distortion
+      let resL = inL * vcaGain;
+      let resR = inR * vcaGain;
+
+      resL = Math.max(-0.95, Math.min(0.95, resL));
+      resR = Math.max(-0.95, Math.min(0.95, resR));
 
       outL[i] = resL;
       if (numChannels > 1) outR[i] = resR;
