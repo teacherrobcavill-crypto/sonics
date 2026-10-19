@@ -305,17 +305,23 @@ def build_console_email_html(
 </body>
 </html>"""
 
-def send_via_apple_mail(to_email: str, subject: str, html_content: str) -> bool:
+def send_via_apple_mail(
+    to_email: str,
+    subject: str,
+    html_content: str,
+    sender: str = "SonicEQ <sonics@rjcmusicproduction.co.uk>"
+) -> bool:
     """
-    Sends rich HTML email via macOS Mail using the official 'set html content' command.
-    Setting visible:false allows macOS Mail to cleanly parse and render native HTML.
+    Sends rich HTML email via macOS Mail using the official 'set html content' command
+    from sonics@rjcmusicproduction.co.uk.
     """
     escaped_subject = subject.replace('\\', '\\\\').replace('"', '\\"')
+    escaped_sender = sender.replace('\\', '\\\\').replace('"', '\\"')
     escaped_html = html_content.replace('\\', '\\\\').replace('"', '\\"')
     
     applescript = f'''
     tell application "Mail"
-        set newMsg to make new outgoing message with properties {{subject:"{escaped_subject}", visible:false}}
+        set newMsg to make new outgoing message with properties {{subject:"{escaped_subject}", sender:"{escaped_sender}", visible:false}}
         tell newMsg
             set html content to "{escaped_html}"
             make new to recipient at end of to recipients with properties {{address:"{to_email}"}}
