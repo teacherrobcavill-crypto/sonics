@@ -29,11 +29,15 @@ import { SessionStats } from './components/SessionStats';
 import { ScoreFlashOverlay } from './components/ScoreFlashOverlay';
 import { Leaderboard } from './components/Leaderboard';
 import { StudentAuthModal } from './components/StudentAuthModal';
+import { AllGamesCompletedModal } from './components/AllGamesCompletedModal';
 import { getRankTitle } from './utils/frequencies';
 import {
   StudentProfile,
   getActiveStudent,
   getRemainingDailyRounds,
+  areAllDailyGamesCompleted,
+  hasSeenDailyCompletionModalToday,
+  markDailyCompletionModalSeenToday,
   recordStudentRound,
   recordGuestRound,
   addStudentBonusPoints,
@@ -158,6 +162,19 @@ export const App: React.FC = () => {
   const [currentStudent, setCurrentStudent] = useState<StudentProfile | null>(() => getActiveStudent());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
+  // Daily Training Completion Modal & Practice Mode State
+  const [isAllCompletedModalOpen, setIsAllCompletedModalOpen] = useState(false);
+  const [practiceModes, setPracticeModes] = useState<Partial<Record<GameMode, boolean>>>({});
+
+  const isCurrentModePractice = activeTab !== 'leaderboard' && activeTab !== 'sandbox' && Boolean(practiceModes[activeTab as GameMode]);
+
+  const handleTogglePracticeMode = (mode: GameMode, enabled: boolean) => {
+    setPracticeModes(prev => ({
+      ...prev,
+      [mode]: enabled
+    }));
+  };
+
   // User Stats & History (synced with student profile if logged in)
   const [stats, setStats] = useState<UserStats>(() => {
     const student = getActiveStudent();
@@ -260,6 +277,12 @@ export const App: React.FC = () => {
     // Starry explosion and score popup always triggers for learning feedback
     setLatestResult(result);
 
+    // If currently in Practice Mode, do not award points, change streaks, or modify leaderboard
+    if (isCurrentModePractice) {
+      setHistory(prev => [...prev, result]);
+      return;
+    }
+
     if (currentStudent && activeTab !== 'leaderboard') {
       const recorded = recordStudentRound(currentStudent.id, activeTab as GameMode, result, currentStudent);
       if (recorded) {
@@ -273,6 +296,15 @@ export const App: React.FC = () => {
             console.warn("Notice: cloud profile sync:", err);
           });
         }
+
+        // Check if all daily games completed today
+        if (areAllDailyGamesCompleted(recorded.updatedProfile)) {
+          if (!hasSeenDailyCompletionModalToday(currentStudent.id)) {
+            markDailyCompletionModalSeenToday(currentStudent.id);
+            setIsAllCompletedModalOpen(true);
+          }
+        }
+
         return;
       }
     }
@@ -281,6 +313,13 @@ export const App: React.FC = () => {
     if (activeTab !== 'leaderboard') {
       recordGuestRound(activeTab as GameMode);
       setGuestUsageTick(t => t + 1);
+
+      if (areAllDailyGamesCompleted(null)) {
+        if (!hasSeenDailyCompletionModalToday('guest')) {
+          markDailyCompletionModalSeenToday('guest');
+          setIsAllCompletedModalOpen(true);
+        }
+      }
     }
 
     setHistory(prev => [...prev, result]);
@@ -304,7 +343,7 @@ export const App: React.FC = () => {
   };
 
   const handleBonusPoints = (bonusPoints: number) => {
-    if (bonusPoints <= 0) return;
+    if (bonusPoints <= 0 || isCurrentModePractice) return;
 
     if (currentStudent) {
       const updated = addStudentBonusPoints(currentStudent.id, bonusPoints, currentStudent);
@@ -627,6 +666,8 @@ export const App: React.FC = () => {
                 onOpenLeaderboard={() => { setActiveTab('leaderboard'); setShowStats(false); }}
                 onNavigateToMode={(mode) => { setActiveTab(mode); setShowStats(false); }}
                 isMobile={isMobile}
+                isPracticeMode={Boolean(practiceModes['peak_master'])}
+                onTogglePracticeMode={(enabled) => handleTogglePracticeMode('peak_master', enabled)}
               />
             )}
 
@@ -640,6 +681,8 @@ export const App: React.FC = () => {
                 onNavigateToSandbox={() => { setActiveTab('sandbox'); setShowStats(false); }}
                 onOpenLeaderboard={() => { setActiveTab('leaderboard'); setShowStats(false); }}
                 isMobile={isMobile}
+                isPracticeMode={Boolean(practiceModes['filter_doctor'])}
+                onTogglePracticeMode={(enabled) => handleTogglePracticeMode('filter_doctor', enabled)}
               />
             )}
 
@@ -655,6 +698,8 @@ export const App: React.FC = () => {
                 onOpenLeaderboard={() => { setActiveTab('leaderboard'); setShowStats(false); }}
                 onNavigateToMode={(mode) => { setActiveTab(mode); setShowStats(false); }}
                 isMobile={isMobile}
+                isPracticeMode={Boolean(practiceModes['pan_master'])}
+                onTogglePracticeMode={(enabled) => handleTogglePracticeMode('pan_master', enabled)}
               />
             )}
 
@@ -670,6 +715,8 @@ export const App: React.FC = () => {
                 onOpenLeaderboard={() => { setActiveTab('leaderboard'); setShowStats(false); }}
                 onNavigateToMode={(mode) => { setActiveTab(mode); setShowStats(false); }}
                 isMobile={isMobile}
+                isPracticeMode={Boolean(practiceModes['db_master'])}
+                onTogglePracticeMode={(enabled) => handleTogglePracticeMode('db_master', enabled)}
               />
             )}
 
@@ -683,6 +730,8 @@ export const App: React.FC = () => {
                 onNavigateToSandbox={() => { setActiveTab('sandbox'); setShowStats(false); }}
                 onOpenLeaderboard={() => { setActiveTab('leaderboard'); setShowStats(false); }}
                 isMobile={isMobile}
+                isPracticeMode={Boolean(practiceModes['tye_match'])}
+                onTogglePracticeMode={(enabled) => handleTogglePracticeMode('tye_match', enabled)}
               />
             )}
 
@@ -727,6 +776,7 @@ export const App: React.FC = () => {
         result={latestResult}
         onDismiss={() => setLatestResult(null)}
         isCustomAudioPractice={isCustomAudio}
+        isPracticeMode={isCurrentModePractice}
       />
 
       {/* Student Authentication & Profile Switcher Modal */}
@@ -737,6 +787,31 @@ export const App: React.FC = () => {
         onStudentChanged={handleStudentChanged}
         onUpdateDefaultTrack={handleSetDefaultTrack}
         onThemeChanged={(newTheme) => setCurrentTheme(newTheme)}
+      />
+
+      {/* Daily Training Completed Celebration Modal */}
+      <AllGamesCompletedModal
+        isOpen={isAllCompletedModalOpen}
+        onClose={() => setIsAllCompletedModalOpen(false)}
+        onViewLeaderboard={() => {
+          setIsAllCompletedModalOpen(false);
+          setActiveTab('leaderboard');
+          setShowStats(false);
+        }}
+        onContinuePractice={() => {
+          setIsAllCompletedModalOpen(false);
+          setPracticeModes({
+            peak_master: true,
+            filter_doctor: true,
+            pan_master: true,
+            db_master: true,
+            tye_match: true
+          });
+        }}
+        studentName={currentStudent?.name}
+        totalScore={stats.totalScore}
+        rankTitle={stats.rankTitle}
+        isMobile={isMobile}
       />
 
       {/* Sticky Mobile Bottom Navigation Bar */}

@@ -25,7 +25,8 @@ import {
   Plus,
   Minus,
   SlidersHorizontal,
-  Lock
+  Lock,
+  Headphones
 } from 'lucide-react';
 import { GameMode, RoundResult, AudioSourceType, FilterParams } from '../../types';
 import { audioEngine, ListeningMode } from '../../audio/AudioEngine';
@@ -42,6 +43,8 @@ interface DbMasterGameProps {
   onOpenLeaderboard?: () => void;
   onNavigateToMode?: (mode: GameMode) => void;
   isMobile?: boolean;
+  isPracticeMode?: boolean;
+  onTogglePracticeMode?: (enabled: boolean) => void;
 }
 
 interface TrackInfo {
@@ -161,9 +164,11 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
   onNavigateToSandbox,
   onOpenLeaderboard,
   onNavigateToMode,
-  isMobile = false
+  isMobile = false,
+  isPracticeMode = false,
+  onTogglePracticeMode
 }) => {
-  const isDailyLocked = !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
+  const isDailyLocked = !isPracticeMode && !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
 
   // Session state
   const [roundCount, setRoundCount] = useState<number>(1);
@@ -180,6 +185,9 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
   const [stemUnlockedMilestone, setStemUnlockedMilestone] = useState<'unlocked' | 'failed' | null>(null);
 
   const handleStemRoundComplete = (result: RoundResult) => {
+    if (isPracticeMode) {
+      result.score = 0;
+    }
     setSessionScore(prev => prev + result.score);
 
     // If one track is more than 3 dB off from the target, a life is lost (max 1 life lost per round)
@@ -187,7 +195,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
       ? Object.values(result.stemDeltas).some(delta => delta > 3.0)
       : result.score === 0;
 
-    if (hasStemOver3Db) {
+    if (hasStemOver3Db && !isPracticeMode) {
       const nextLives = lives - 1;
       setLives(nextLives);
       if (roundCount <= 10) {
@@ -462,6 +470,9 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
 
     setIsRoundAnswered(true);
     const scoreResult = calculateDbScore(userFaderDb, targetDelta, roundCount);
+    if (isPracticeMode) {
+      scoreResult.score = 0;
+    }
     const elapsedSeconds = (Date.now() - startTime) / 1000;
 
     setSessionScore(prev => prev + scoreResult.score);
@@ -487,7 +498,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
     let finalLives = lives;
     let finalLivesLost = livesLostInFirst10;
 
-    if (!scoreResult.isHit) {
+    if (!scoreResult.isHit && !isPracticeMode) {
       // Miss: in Rounds 1-10, diff > 0.5 dB; in Rounds 11-20, diff > 6.0 dB
       finalLives = lives - 1;
       setLives(finalLives);
@@ -550,6 +561,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
     isRoundAnswered,
     isGameOver,
     isDailyLocked,
+    isPracticeMode,
     userFaderDb,
     targetDelta,
     startTime,
@@ -561,7 +573,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
 
   // Next Round Handler
   const handleNextRound = useCallback(() => {
-    if (roundCount >= 20) {
+    if (roundCount >= 20 && !isPracticeMode) {
       setIsVictory(true);
       confetti({
         particleCount: 120,
@@ -799,9 +811,13 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
             <div className="flex items-center justify-between gap-1.5 w-full flex-wrap">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="px-2 py-0.5 text-[11px] font-mono font-bold uppercase tracking-wider bg-studio-accent/20 text-studio-accent rounded-lg border border-studio-accent/30 shadow-sm">
-                  Rd {roundCount}/20
+                  {isPracticeMode ? `Rd ${roundCount} (Prac)` : `Rd ${roundCount}/20`}
                 </span>
-                {isCustomAudio ? (
+                {isPracticeMode ? (
+                  <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1 shadow-sm">
+                    <Headphones className="w-3 h-3 text-purple-400" /> Practice
+                  </span>
+                ) : isCustomAudio ? (
                   <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1 shadow-sm">
                     📁 Custom
                   </span>
@@ -820,21 +836,28 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
                 )}
 
                 {/* Mobile Lives directly next to 20/20 Left */}
-                <div className="flex items-center space-x-1 bg-studio-950 px-2 py-0.5 rounded-lg border border-studio-800">
-                  {[1, 2, 3].map(heartIndex => (
-                    heartIndex <= lives ? (
-                      <Heart
-                        key={heartIndex}
-                        className="w-3.5 h-3.5 text-red-500 fill-red-500 filter drop-shadow-[0_0_4px_rgba(239,68,68,0.7)]"
-                      />
-                    ) : (
-                      <HeartCrack
-                        key={heartIndex}
-                        className="w-3.5 h-3.5 text-slate-600 fill-slate-700/40"
-                      />
-                    )
-                  ))}
-                </div>
+                {isPracticeMode ? (
+                  <div className="flex items-center space-x-1 bg-purple-950/60 px-2 py-0.5 rounded-lg border border-purple-500/40" title="Lives protected in Practice Mode">
+                    <Heart className="w-3.5 h-3.5 text-purple-400 fill-purple-400" />
+                    <span className="text-[9px] font-mono font-bold text-purple-200">PROTECTED</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-1 bg-studio-950 px-2 py-0.5 rounded-lg border border-studio-800">
+                    {[1, 2, 3].map(heartIndex => (
+                      heartIndex <= lives ? (
+                        <Heart
+                          key={heartIndex}
+                          className="w-3.5 h-3.5 text-red-500 fill-red-500 filter drop-shadow-[0_0_4px_rgba(239,68,68,0.7)]"
+                        />
+                      ) : (
+                        <HeartCrack
+                          key={heartIndex}
+                          className="w-3.5 h-3.5 text-slate-600 fill-slate-700/40"
+                        />
+                      )
+                    ))}
+                  </div>
+                )}
 
                 {/* Mobile Score directly next to 20/20 Left */}
                 <span className="px-2 py-0.5 bg-studio-950 rounded-lg border border-studio-800 font-mono text-[11px] font-bold text-emerald-400">
@@ -896,9 +919,13 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
             {/* Title & Badge */}
             <div className="flex items-center gap-3">
               <span className="px-2.5 py-1 text-xs font-mono font-bold uppercase tracking-wider bg-studio-accent/20 text-studio-accent rounded-lg border border-studio-accent/30 shadow-sm">
-                Round {roundCount}/20
+                {isPracticeMode ? `Round ${roundCount} (Practice)` : `Round ${roundCount}/20`}
               </span>
-              {isCustomAudio ? (
+              {isPracticeMode ? (
+                <span className="px-2.5 py-1 text-xs font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1.5 shadow-sm">
+                  <Headphones className="w-3.5 h-3.5 text-purple-400" /> Practice Mode (Lives Protected &bull; 0 PTS)
+                </span>
+              ) : isCustomAudio ? (
                 <span className="px-2 py-0.5 text-[11px] font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1 shadow-sm">
                   📁 Custom Audio (Unlimited)
                 </span>
@@ -975,21 +1002,28 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
 
             {/* Right: Lives & Score */}
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-1.5 bg-studio-950 px-3 py-1.5 rounded-xl border border-studio-800">
-                {[1, 2, 3].map(heartIndex => (
-                  heartIndex <= lives ? (
-                    <Heart
-                      key={heartIndex}
-                      className="w-4 h-4 text-red-500 fill-red-500 filter drop-shadow-[0_0_6px_rgba(239,68,68,0.7)]"
-                    />
-                  ) : (
-                    <HeartCrack
-                      key={heartIndex}
-                      className="w-4 h-4 text-slate-600 fill-slate-700/40"
-                    />
-                  )
-                ))}
-              </div>
+              {isPracticeMode ? (
+                <div className="flex items-center space-x-1.5 bg-purple-950/60 px-3 py-1.5 rounded-xl border border-purple-500/40" title="Lives protected in Practice Mode">
+                  <Heart className="w-4 h-4 text-purple-400 fill-purple-400" />
+                  <span className="text-xs font-mono font-bold text-purple-200 uppercase">Lives Protected</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-1.5 bg-studio-950 px-3 py-1.5 rounded-xl border border-studio-800">
+                  {[1, 2, 3].map(heartIndex => (
+                    heartIndex <= lives ? (
+                      <Heart
+                        key={heartIndex}
+                        className="w-4 h-4 text-red-500 fill-red-500 filter drop-shadow-[0_0_6px_rgba(239,68,68,0.7)]"
+                      />
+                    ) : (
+                      <HeartCrack
+                        key={heartIndex}
+                        className="w-4 h-4 text-slate-600 fill-slate-700/40"
+                      />
+                    )
+                  ))}
+                </div>
+              )}
 
               <div className="flex items-center space-x-2 bg-studio-950 px-3 py-1.5 rounded-xl border border-studio-800 font-mono text-xs">
                 <span className="text-slate-400">Score:</span>
@@ -1662,6 +1696,15 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            {onTogglePracticeMode && (
+              <button
+                onClick={() => onTogglePracticeMode(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-purple-600/20"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span>Practice Mode</span>
+              </button>
+            )}
             {onNavigateToSandbox && (
               <button
                 onClick={onNavigateToSandbox}

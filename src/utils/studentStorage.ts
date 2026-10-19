@@ -5,6 +5,14 @@ import { mergeGlynJohnsIntoLeaderboard } from './glynJohns';
 
 export const DAILY_ROUND_LIMIT = 20;
 
+export const DAILY_RANKED_MODES: GameMode[] = [
+  'peak_master',
+  'filter_doctor',
+  'pan_master',
+  'db_master',
+  'tye_match'
+];
+
 export function formatYearLabel(yearStr?: string): string {
   if (!yearStr) return '2026';
   return yearStr.replace(/Class of /i, '').replace(/Alumni \(/i, '').replace(/\)/g, '').trim();
@@ -547,6 +555,31 @@ export function getRemainingDailyRounds(student: StudentProfile | null, mode: Ga
   const used = student.dailyUsage.rounds[mode as keyof DailyUsage['rounds']] || 0;
   const remaining = Math.max(0, max - used);
   return { remaining, used, max };
+}
+
+export function areAllDailyGamesCompleted(student: StudentProfile | null): boolean {
+  return DAILY_RANKED_MODES.every(mode => {
+    const { remaining } = getRemainingDailyRounds(student, mode);
+    return remaining <= 0;
+  });
+}
+
+export function hasSeenDailyCompletionModalToday(studentId?: string): boolean {
+  const today = getTodayDateString();
+  const key = `soniceq_daily_complete_modal_${today}_${studentId || 'guest'}`;
+  try {
+    return localStorage.getItem(key) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function markDailyCompletionModalSeenToday(studentId?: string): void {
+  const today = getTodayDateString();
+  const key = `soniceq_daily_complete_modal_${today}_${studentId || 'guest'}`;
+  try {
+    localStorage.setItem(key, 'true');
+  } catch {}
 }
 
 export function recordStudentRound(

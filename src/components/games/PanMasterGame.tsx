@@ -15,7 +15,8 @@ import {
   Trophy,
   Activity,
   Volume2,
-  Radio
+  Radio,
+  Headphones
 } from 'lucide-react';
 import { FilterParams, GameMode, RoundResult } from '../../types';
 import { audioEngine } from '../../audio/AudioEngine';
@@ -32,6 +33,8 @@ interface PanMasterGameProps {
   onOpenLeaderboard?: () => void;
   onNavigateToMode?: (mode: GameMode) => void;
   isMobile?: boolean;
+  isPracticeMode?: boolean;
+  onTogglePracticeMode?: (enabled: boolean) => void;
 }
 
 /**
@@ -90,9 +93,11 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
   onNavigateToSandbox,
   onOpenLeaderboard,
   onNavigateToMode,
-  isMobile = false
+  isMobile = false,
+  isPracticeMode = false,
+  onTogglePracticeMode
 }) => {
-  const isDailyLocked = !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
+  const isDailyLocked = !isPracticeMode && !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
 
   // Game session state
   const [roundCount, setRoundCount] = useState<number>(1);
@@ -257,6 +262,10 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
       score = 0;
     }
 
+    if (isPracticeMode) {
+      score = 0;
+    }
+
     const dummyFilter: FilterParams = {
       type: 'peaking',
       frequency: 1000,
@@ -287,15 +296,16 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
     setLastHitStatus(isHit ? 'hit' : 'miss');
     setSessionScore(prev => prev + score);
 
+    // Lives & game over handling (Lives protected in Practice Mode)
     if (isHit) {
-      if (distPercent <= 2 || score >= Math.round(maxPossibleScore * 0.85)) {
+      if (distPercent <= 2 || (score >= Math.round(maxPossibleScore * 0.85) && !isPracticeMode)) {
         confetti({
           particleCount: 50,
           spread: 60,
           origin: { y: 0.6 }
         });
       }
-    } else {
+    } else if (!isPracticeMode) {
       const remainingLives = lives - 1;
       setLives(remainingLives);
       if (remainingLives <= 0) {
@@ -308,7 +318,7 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
 
   // Next Round
   const handleNextRound = () => {
-    if (roundCount >= 20) {
+    if (roundCount >= 20 && !isPracticeMode) {
       setIsVictory(true);
       confetti({
         particleCount: 120,
@@ -582,24 +592,36 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
           <div className="flex flex-wrap items-center gap-2">
             <span className="px-3 py-1 text-xs font-mono font-bold uppercase tracking-wider bg-studio-neonBlue/20 text-studio-neonBlue rounded-lg border border-studio-neonBlue/30 flex items-center gap-1.5 shadow-sm">
               <Compass className="w-3.5 h-3.5" />
-              Round {roundCount} / 20
+              {isPracticeMode ? `Round ${roundCount} (Practice)` : `Round ${roundCount} / 20`}
             </span>
 
             {/* Lives Indicator */}
-            <div className="flex items-center space-x-1 px-2.5 py-1 bg-studio-950 border border-studio-800 rounded-lg shadow-inner">
-              <span className="text-[11px] font-mono text-slate-400 mr-1 font-semibold uppercase">Lives:</span>
-              {[1, 2, 3].map(heartIdx => (
-                <span key={heartIdx} className="transition-transform duration-300">
-                  {heartIdx <= lives ? (
-                    <Heart className="w-4 h-4 text-red-500 fill-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
-                  ) : (
-                    <HeartCrack className="w-4 h-4 text-slate-600/70" />
-                  )}
-                </span>
-              ))}
-            </div>
+            {isPracticeMode ? (
+              <div className="flex items-center space-x-1 px-2.5 py-1 bg-purple-950/60 border border-purple-500/40 rounded-lg shadow-inner" title="Lives protected in Practice Mode">
+                <span className="text-[11px] font-mono text-purple-300 mr-1 font-semibold uppercase">Lives:</span>
+                <Heart className="w-4 h-4 text-purple-400 fill-purple-400" />
+                <span className="text-[10px] font-mono font-bold text-purple-200 uppercase">Protected</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-1 px-2.5 py-1 bg-studio-950 border border-studio-800 rounded-lg shadow-inner">
+                <span className="text-[11px] font-mono text-slate-400 mr-1 font-semibold uppercase">Lives:</span>
+                {[1, 2, 3].map(heartIdx => (
+                  <span key={heartIdx} className="transition-transform duration-300">
+                    {heartIdx <= lives ? (
+                      <Heart className="w-4 h-4 text-red-500 fill-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]" />
+                    ) : (
+                      <HeartCrack className="w-4 h-4 text-slate-600/70" />
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
 
-            {isCustomAudio ? (
+            {isPracticeMode ? (
+              <span className="px-2.5 py-1 text-xs font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1.5 shadow-sm">
+                <Headphones className="w-3.5 h-3.5 text-purple-400" /> Practice Mode {isMobile ? '' : '(Lives Protected • 0 PTS)'}
+              </span>
+            ) : isCustomAudio ? (
               <span className="px-2.5 py-1 text-xs font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1.5 shadow-sm">
                 📁 Custom Audio {isMobile ? '' : '(Unlimited • Unranked)'}
               </span>
@@ -967,6 +989,15 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            {onTogglePracticeMode && (
+              <button
+                onClick={() => onTogglePracticeMode(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-purple-600/20"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span>Practice Mode</span>
+              </button>
+            )}
             {onNavigateToSandbox && (
               <button
                 onClick={onNavigateToSandbox}

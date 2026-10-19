@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import confetti from 'canvas-confetti';
-import { ChevronRight, Award, Sliders, Volume2, Sparkles, Crosshair, ArrowLeftRight } from 'lucide-react';
+import { ChevronRight, Award, Sliders, Volume2, Sparkles, Crosshair, ArrowLeftRight, Headphones } from 'lucide-react';
 import { FilterParams, RoundResult } from '../../types';
 import { audioEngine } from '../../audio/AudioEngine';
 import { SpectrumDisplay } from '../SpectrumDisplay';
@@ -23,6 +23,8 @@ interface FilterDoctorGameProps {
   onNavigateToSandbox?: () => void;
   onOpenLeaderboard?: () => void;
   isMobile?: boolean;
+  isPracticeMode?: boolean;
+  onTogglePracticeMode?: (enabled: boolean) => void;
 }
 
 // Standard filter slopes available in Enhanced Mode (from 6 dB/oct up to 96 dB/oct)
@@ -46,9 +48,11 @@ export const FilterDoctorGame: React.FC<FilterDoctorGameProps> = ({
   isCustomAudio = false,
   onNavigateToSandbox,
   onOpenLeaderboard,
-  isMobile = false
+  isMobile = false,
+  isPracticeMode = false,
+  onTogglePracticeMode
 }) => {
-  const isDailyLocked = !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
+  const isDailyLocked = !isPracticeMode && !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
 
 
   const [slope, setSlope] = useState<number>(24); // 24 dB/oct default (standard mode)
@@ -367,6 +371,10 @@ export const FilterDoctorGame: React.FC<FilterDoctorGameProps> = ({
       primaryGuess = { type: target.type, frequency: guessFreq, gain: 0, q: 0.707, slope: guessSlope };
     }
 
+    if (isPracticeMode) {
+      totalScore = 0;
+    }
+
     const result: RoundResult = {
       roundNumber: roundCount,
       mode: 'filter_doctor',
@@ -417,9 +425,13 @@ export const FilterDoctorGame: React.FC<FilterDoctorGameProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-1.5">
             <div className="flex items-center gap-1.5">
               <span className={`${isMobile ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'} font-mono font-bold uppercase tracking-wider bg-studio-neonOrange/20 text-studio-neonOrange rounded-lg border border-studio-neonOrange/30`}>
-                Round {roundCount}
+                {isPracticeMode ? `Round ${roundCount} (Practice)` : `Round ${roundCount}`}
               </span>
-              {isCustomAudio ? (
+              {isPracticeMode ? (
+                <span className={`${isMobile ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'} font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1 shadow-sm`}>
+                  <Headphones className="w-3.5 h-3.5 text-purple-400" /> Practice Mode (0 PTS)
+                </span>
+              ) : isCustomAudio ? (
                 <span className={`${isMobile ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'} font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1 shadow-sm`}>
                   📁 Custom Audio {isMobile ? '' : '(Unlimited • Unranked)'}
                 </span>
@@ -660,17 +672,27 @@ export const FilterDoctorGame: React.FC<FilterDoctorGameProps> = ({
               {/* Submit Button */}
               <button
                 onClick={handleSubmitGuess}
-                className="flex-1 min-w-0 py-3 px-2 rounded-xl font-bold font-mono text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 bg-studio-neonOrange text-studio-950 shadow-studio-neonOrange/25 hover:brightness-110 cursor-pointer text-center truncate"
+                disabled={isDailyLocked}
+                className={`flex-1 min-w-0 py-3 px-2 rounded-xl font-bold font-mono text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 text-center truncate ${
+                  isDailyLocked
+                    ? 'bg-studio-800 text-slate-500 cursor-not-allowed border border-studio-700'
+                    : 'bg-studio-neonOrange text-studio-950 shadow-studio-neonOrange/25 hover:brightness-110 cursor-pointer'
+                }`}
               >
-                Submit Guess &bull; {maxPossiblePoints} PTS
+                {isDailyLocked ? 'Daily Limit Reached' : `Submit Guess • ${maxPossiblePoints} PTS`}
               </button>
             </div>
           ) : (
             <button
               onClick={handleSubmitGuess}
-              className="px-6 py-3 rounded-xl font-bold font-mono text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 bg-studio-neonOrange text-studio-950 shadow-studio-neonOrange/25 hover:brightness-110 cursor-pointer w-full sm:w-auto text-center"
+              disabled={isDailyLocked}
+              className={`px-6 py-3 rounded-xl font-bold font-mono text-xs uppercase tracking-wider transition-all shadow-lg active:scale-95 w-full sm:w-auto text-center ${
+                isDailyLocked
+                  ? 'bg-studio-800 text-slate-500 cursor-not-allowed border border-studio-700'
+                  : 'bg-studio-neonOrange text-studio-950 shadow-studio-neonOrange/25 hover:brightness-110 cursor-pointer'
+              }`}
             >
-              Submit Filter Guess &bull; Up to {maxPossiblePoints} PTS
+              {isDailyLocked ? 'Daily Limit Reached' : `Submit Filter Guess • Up to ${maxPossiblePoints} PTS`}
             </button>
           )
         ) : (
@@ -727,6 +749,48 @@ export const FilterDoctorGame: React.FC<FilterDoctorGameProps> = ({
           </>
         )}
       </div>
+
+      {/* Daily Lockout Alert Banner */}
+      {isDailyLocked && (
+        <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono">
+          <div className="flex items-center space-x-2.5 text-amber-300">
+            <Award className="w-5 h-5 flex-shrink-0 text-amber-400" />
+            <div>
+              <span className="font-bold">Daily Training Goal Met!</span>
+              <span className="text-slate-400 block sm:inline sm:ml-2">
+                You've completed all 20 rounds for Filter Doctor today. Resets tomorrow at midnight!
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            {onTogglePracticeMode && (
+              <button
+                onClick={() => onTogglePracticeMode(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-purple-600/20"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span>Practice Mode</span>
+              </button>
+            )}
+            {onNavigateToSandbox && (
+              <button
+                onClick={onNavigateToSandbox}
+                className="px-3.5 py-1.5 rounded-xl bg-studio-accent text-studio-950 font-bold hover:brightness-110 transition-all cursor-pointer"
+              >
+                Practice in Sandbox
+              </button>
+            )}
+            {onOpenLeaderboard && (
+              <button
+                onClick={onOpenLeaderboard}
+                className="px-3.5 py-1.5 rounded-xl bg-studio-800 text-slate-200 hover:text-white border border-studio-700 transition-all cursor-pointer"
+              >
+                Leaderboard
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Tactile Real-Time Cutoff Fader Controls (Replacing the static buttons) */}
       <div className={`bg-studio-900 border border-studio-800 ${isMobile ? 'p-3.5' : 'p-5'} rounded-2xl space-y-4`}>

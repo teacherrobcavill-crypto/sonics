@@ -15,7 +15,8 @@ import {
   Trophy,
   Target,
   Crosshair,
-  Volume2
+  Volume2,
+  Headphones
 } from 'lucide-react';
 import { FilterParams, GameMode, RoundResult } from '../../types';
 import { audioEngine } from '../../audio/AudioEngine';
@@ -42,6 +43,8 @@ interface PeakMasterGameProps {
   onOpenLeaderboard?: () => void;
   onNavigateToMode?: (mode: GameMode) => void;
   isMobile?: boolean;
+  isPracticeMode?: boolean;
+  onTogglePracticeMode?: (enabled: boolean) => void;
 }
 
 /**
@@ -106,9 +109,11 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
   onNavigateToSandbox,
   onOpenLeaderboard,
   onNavigateToMode,
-  isMobile = false
+  isMobile = false,
+  isPracticeMode = false,
+  onTogglePracticeMode
 }) => {
-  const isDailyLocked = !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
+  const isDailyLocked = !isPracticeMode && !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
 
   // Game session states
   const [roundCount, setRoundCount] = useState<number>(1);
@@ -253,6 +258,10 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
       score = 0;
     }
 
+    if (isPracticeMode) {
+      score = 0;
+    }
+
     const userFilterParam: FilterParams = {
       type: 'peaking',
       frequency: guessFrequency,
@@ -282,16 +291,16 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
     setLastHitStatus(isHit ? 'hit' : 'miss');
     setSessionScore(prev => prev + score);
 
-    // Handle lives & game over
+    // Handle lives & game over (Lives protected in Practice Mode)
     if (isHit) {
-      if (distOctaves <= 0.05 || score >= Math.round(maxPossibleScore * 0.85)) {
+      if (distOctaves <= 0.05 || (score >= Math.round(maxPossibleScore * 0.85) && !isPracticeMode)) {
         confetti({
           particleCount: 50,
           spread: 60,
           origin: { y: 0.6 }
         });
       }
-    } else {
+    } else if (!isPracticeMode) {
       const remainingLives = lives - 1;
       setLives(remainingLives);
       if (remainingLives <= 0) {
@@ -304,7 +313,7 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
 
   // Advance to next round
   const handleNextRound = () => {
-    if (roundCount >= 20) {
+    if (roundCount >= 20 && !isPracticeMode) {
       setIsVictory(true);
       confetti({
         particleCount: 120,
@@ -382,12 +391,16 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
             {/* Round indicator */}
             <span className={`${isMobile ? 'px-2 py-0.5 text-[11px]' : 'px-2.5 py-1 text-xs'} font-mono font-bold uppercase tracking-wider bg-studio-accent/20 text-studio-accent rounded-lg border border-studio-accent/30 flex items-center gap-1 shadow-sm shrink-0`}>
               <Activity className="w-3.5 h-3.5" />
-              {isMobile ? `Rd ${roundCount}/20` : `Round ${roundCount} / 20`}
+              {isPracticeMode ? (isMobile ? `Rd ${roundCount} (Prac)` : `Round ${roundCount} (Practice)`) : (isMobile ? `Rd ${roundCount}/20` : `Round ${roundCount} / 20`)}
             </span>
 
-            {/* Mobile: 20/20 Left fitted in between Round and Lives */}
+            {/* Mobile: Practice or Daily Left */}
             {isMobile && (
-              isCustomAudio ? (
+              isPracticeMode ? (
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1 shadow-sm shrink-0">
+                  <Headphones className="w-3 h-3 text-purple-400" /> Practice
+                </span>
+              ) : isCustomAudio ? (
                 <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1 shadow-sm shrink-0">
                   📁 Custom
                 </span>
@@ -407,22 +420,34 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
             )}
 
             {/* Lives Indicator */}
-            <div className={`flex items-center space-x-1 ${isMobile ? 'px-2 py-0.5' : 'px-2.5 py-1'} bg-studio-950 border border-studio-800 rounded-lg shadow-inner shrink-0`}>
-              <span className={`${isMobile ? 'text-[10px]' : 'text-[11px]'} font-mono text-slate-400 mr-0.5 font-semibold uppercase`}>Lives:</span>
-              {[1, 2, 3].map(heartIdx => (
-                <span key={heartIdx} className="transition-transform duration-300">
-                  {heartIdx <= lives ? (
-                    <Heart className={`${isMobile ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-red-500 fill-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]`} />
-                  ) : (
-                    <HeartCrack className={`${isMobile ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-slate-600/70`} />
-                  )}
-                </span>
-              ))}
-            </div>
+            {isPracticeMode ? (
+              <div className={`flex items-center space-x-1 ${isMobile ? 'px-2 py-0.5' : 'px-2.5 py-1'} bg-purple-950/60 border border-purple-500/40 rounded-lg shadow-inner shrink-0`} title="Lives protected in Practice Mode">
+                <span className={`${isMobile ? 'text-[10px]' : 'text-[11px]'} font-mono text-purple-300 mr-0.5 font-semibold uppercase`}>Lives:</span>
+                <Heart className={`${isMobile ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-purple-400 fill-purple-400`} />
+                <span className={`${isMobile ? 'text-[9px]' : 'text-[10px]'} font-mono font-bold text-purple-200 uppercase`}>Protected</span>
+              </div>
+            ) : (
+              <div className={`flex items-center space-x-1 ${isMobile ? 'px-2 py-0.5' : 'px-2.5 py-1'} bg-studio-950 border border-studio-800 rounded-lg shadow-inner shrink-0`}>
+                <span className={`${isMobile ? 'text-[10px]' : 'text-[11px]'} font-mono text-slate-400 mr-0.5 font-semibold uppercase`}>Lives:</span>
+                {[1, 2, 3].map(heartIdx => (
+                  <span key={heartIdx} className="transition-transform duration-300">
+                    {heartIdx <= lives ? (
+                      <Heart className={`${isMobile ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-red-500 fill-red-500 drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]`} />
+                    ) : (
+                      <HeartCrack className={`${isMobile ? 'w-3 h-3' : 'w-3.5 h-3.5'} text-slate-600/70`} />
+                    )}
+                  </span>
+                ))}
+              </div>
+            )}
 
-            {/* Desktop: 20/20 Left */}
+            {/* Desktop: Practice or Daily Left */}
             {!isMobile && (
-              isCustomAudio ? (
+              isPracticeMode ? (
+                <span className="px-2 py-1 text-[11px] font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1 shadow-sm">
+                  <Headphones className="w-3.5 h-3.5 text-purple-400" /> Practice Mode (Lives Protected &bull; 0 PTS)
+                </span>
+              ) : isCustomAudio ? (
                 <span className="px-2 py-1 text-[11px] font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1 shadow-sm">
                   📁 Custom Audio
                 </span>
@@ -798,6 +823,15 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            {onTogglePracticeMode && (
+              <button
+                onClick={() => onTogglePracticeMode(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-purple-600/20"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span>Practice Mode</span>
+              </button>
+            )}
             {onNavigateToSandbox && (
               <button
                 onClick={onNavigateToSandbox}

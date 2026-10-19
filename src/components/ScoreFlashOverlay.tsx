@@ -7,12 +7,14 @@ interface ScoreFlashOverlayProps {
   result: RoundResult | null;
   onDismiss?: () => void;
   isCustomAudioPractice?: boolean;
+  isPracticeMode?: boolean;
 }
 
 export const ScoreFlashOverlay: React.FC<ScoreFlashOverlayProps> = ({
   result,
   onDismiss,
-  isCustomAudioPractice = false
+  isCustomAudioPractice = false,
+  isPracticeMode = false
 }) => {
   const [visible, setVisible] = useState(false);
   const [currentResult, setCurrentResult] = useState<RoundResult | null>(null);
@@ -168,6 +170,13 @@ export const ScoreFlashOverlay: React.FC<ScoreFlashOverlayProps> = ({
         {isCustomAudioPractice && (
           <div className="mt-2 text-[10px] sm:text-xs font-mono font-medium text-cyan-300 bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-500/40 shadow">
             📁 Custom Audio Mode &bull; Score Displayed (Not Recorded on Leaderboard)
+          </div>
+        )}
+
+        {/* Unranked Practice Mode Notice */}
+        {isPracticeMode && (
+          <div className="mt-2 text-[10px] sm:text-xs font-mono font-medium text-purple-300 bg-purple-950/80 px-3 py-1 rounded-full border border-purple-500/40 shadow">
+            🎧 Practice Mode &bull; Lives Protected &bull; 0 PTS Recorded
           </div>
         )}
 

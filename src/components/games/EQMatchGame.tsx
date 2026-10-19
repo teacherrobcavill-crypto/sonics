@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import confetti from 'canvas-confetti';
-import { ChevronRight, Award, Sliders, Volume2, CheckCircle2, RotateCcw, Lightbulb, HelpCircle, Compass } from 'lucide-react';
+import { ChevronRight, Award, Sliders, Volume2, CheckCircle2, RotateCcw, Lightbulb, HelpCircle, Compass, Headphones } from 'lucide-react';
 import { FilterParams, FilterType, RoundResult } from '../../types';
 import { audioEngine } from '../../audio/AudioEngine';
 import { SpectrumDisplay } from '../SpectrumDisplay';
@@ -39,6 +39,8 @@ interface EQMatchGameProps {
   onNavigateToSandbox?: () => void;
   onOpenLeaderboard?: () => void;
   isMobile?: boolean;
+  isPracticeMode?: boolean;
+  onTogglePracticeMode?: (enabled: boolean) => void;
 }
 
 export const EQMatchGame: React.FC<EQMatchGameProps> = ({
@@ -49,9 +51,11 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
   isCustomAudio = false,
   onNavigateToSandbox,
   onOpenLeaderboard,
-  isMobile = false
+  isMobile = false,
+  isPracticeMode = false,
+  onTogglePracticeMode
 }) => {
-  const isDailyLocked = !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
+  const isDailyLocked = !isPracticeMode && !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
   const [filterType, setFilterType] = useState<FilterType>('peaking');
 
   // Hints state: up to 3 hints per round, -33% score penalty per hint
@@ -238,7 +242,7 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
     const rawScore = calculateScore(distOctaves, gainError, true, maxPossibleDist);
     // 33% penalty per hint used (1 hint = 67%, 2 hints = 34%, 3 hints = 1% floor)
     const hintMultiplier = Math.max(0.01, 1 - hintsUsed * 0.33);
-    const score = Math.round((rawScore / 1000) * maxScore * hintMultiplier);
+    const score = isPracticeMode ? 0 : Math.round((rawScore / 1000) * maxScore * hintMultiplier);
 
     const userFinal: FilterParams = {
       type: filterType,
@@ -267,7 +271,7 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
     onRoundComplete(result);
 
     const effectiveMax = Math.round(maxScore * hintMultiplier);
-    if (score >= Math.round(effectiveMax * 0.85)) {
+    if (score >= Math.round(effectiveMax * 0.85) && !isPracticeMode) {
       confetti({
         particleCount: score === effectiveMax ? 70 : 35,
         spread: 60,
@@ -289,7 +293,7 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
         <div>
           <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto scrollbar-none pb-0.5">
             <span className={`${isMobile ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'} font-mono font-bold uppercase tracking-wider bg-studio-accent/20 text-studio-accent rounded-lg border border-studio-accent/30 shrink-0`}>
-              {isMobile ? `Rd ${roundCount}` : `Round ${roundCount}`}
+              {isPracticeMode ? `Round ${roundCount} (Practice)` : (isMobile ? `Rd ${roundCount}` : `Round ${roundCount}`)}
             </span>
             <span className={`${isMobile ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'} font-mono font-bold uppercase tracking-wider rounded-lg border shrink-0 ${
               filterType === 'peaking'
@@ -298,7 +302,11 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
             }`}>
               {filterType === 'peaking' ? 'Parametric (Bell)' : filterType === 'lowshelf' ? 'Low Shelf (≤1k)' : 'High Shelf (≥1k)'}
             </span>
-            {isCustomAudio ? (
+            {isPracticeMode ? (
+              <span className={`${isMobile ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'} font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1.5 shadow-sm shrink-0`}>
+                <Headphones className="w-3.5 h-3.5 text-purple-400" /> Practice Mode {isMobile ? '' : '(0 PTS)'}
+              </span>
+            ) : isCustomAudio ? (
               <span className={`${isMobile ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs'} font-mono font-bold uppercase tracking-wider rounded-lg border bg-purple-500/20 text-purple-300 border-purple-500/30 flex items-center gap-1.5 shadow-sm shrink-0`}>
                 📁 Custom Audio {isMobile ? '' : '(Unlimited • Unranked)'}
               </span>
@@ -563,6 +571,15 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            {onTogglePracticeMode && (
+              <button
+                onClick={() => onTogglePracticeMode(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-md shadow-purple-600/20"
+              >
+                <Headphones className="w-3.5 h-3.5" />
+                <span>Practice Mode</span>
+              </button>
+            )}
             {onNavigateToSandbox && (
               <button
                 onClick={onNavigateToSandbox}
