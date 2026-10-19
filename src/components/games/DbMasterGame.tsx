@@ -107,8 +107,8 @@ function generateTargetDeltaDb(): number {
  * - increments of 0.1 dB
  * - 75 points for spot on (diff === 0.0 dB, scaled back by 25% from 100)
  * - Rounds 1 to 10 (Single Fader): Strict precision tolerance:
- *   - diffDb <= 0.5 dB: Hit (64 to 75 PTS)
- *   - diffDb > 0.5 dB: Miss (0 PTS, 1 Life Lost)
+ *   - diffDb <= 1.0 dB: Hit (scaled PTS)
+ *   - diffDb > 1.0 dB: Miss (0 PTS, 1 Life Lost)
  * - Rounds 11 to 20: Standard curve (scaling down to 8 pts at 6.0 dB, >6.0 dB loses 1 life)
  */
 export function calculateDbScore(guessDb: number, targetDb: number, roundNumber: number = 1): {
@@ -123,14 +123,15 @@ export function calculateDbScore(guessDb: number, targetDb: number, roundNumber:
     return { score: 75, diffDb, isHit: true, status: 'spot_on' };
   }
 
-  // Single Fader Mode - Rounds 1 to 10: Strict pro tolerance (Life lost if diff > 0.5 dB)
+  // Single Fader Mode - Rounds 1 to 10: Precision tolerance (Life lost if diff > 1.0 dB)
   if (roundNumber <= 10) {
-    if (diffDb <= 0.5) {
+    if (diffDb <= 1.0) {
       const rawScore = 100 - (diffDb / 3.0) * 90;
       const score = Math.round(rawScore * 0.75);
-      return { score, diffDb, isHit: true, status: 'excellent' };
+      const status = diffDb <= 0.5 ? 'excellent' : 'good';
+      return { score, diffDb, isHit: true, status };
     }
-    // Out by more than 0.5 dB in first 10 rounds -> MISS (0 pts, 1 Life Lost)
+    // Out by more than 1.0 dB in first 10 rounds -> MISS (0 pts, 1 Life Lost)
     return { score: 0, diffDb, isHit: false, status: 'miss' };
   }
 
@@ -1063,7 +1064,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
             </h2>
             {!isMobile && (
               <p className="text-xs sm:text-sm text-slate-400 font-mono">
-                Listen to the <strong className="text-slate-200">[A] Reference</strong> & <strong className="text-studio-accent">[B] Changed Level</strong>, move the fader to match in 0.1 dB steps, then lock in your guess! {roundCount <= 10 && <span className="text-amber-400 font-bold">(Rounds 1–10: lose a life if diff &gt; 0.5 dB)</span>}
+                Listen to the <strong className="text-slate-200">[A] Reference</strong> & <strong className="text-studio-accent">[B] Changed Level</strong>, move the fader to match in 0.1 dB steps, then lock in your guess! {roundCount <= 10 && <span className="text-amber-400 font-bold">(Rounds 1–10: lose a life if diff &gt; 1.0 dB)</span>}
               </p>
             )}
           </div>
@@ -1400,7 +1401,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
                   <div className={`flex items-center justify-between font-mono text-slate-400 px-1 ${isMobile ? 'text-[10px]' : 'text-xs'}`}>
                     <span>POSITION</span>
                     <span className={`${isMobile ? 'text-[9px]' : 'text-[10px]'} ${roundCount <= 10 ? 'text-amber-400 font-bold' : 'text-slate-500'}`}>
-                      {roundCount <= 10 ? '±0.5 dB Max' : '0.1 dB Res'}
+                      {roundCount <= 10 ? '±1.0 dB Max' : '0.1 dB Res'}
                     </span>
                   </div>
 
@@ -1553,7 +1554,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
                   ) : (
                     <div className="flex items-center space-x-2 text-rose-400">
                       <HeartCrack className="w-5 h-5 text-rose-400" />
-                      <span>❌ MISS! Out by {currentResult.diffDb.toFixed(1)} dB ({roundCount <= 10 ? '>0.5 dB' : '>6.0 dB'} = 0 PTS, 1 Life Lost)</span>
+                      <span>❌ MISS! Out by {currentResult.diffDb.toFixed(1)} dB ({roundCount <= 10 ? '>1.0 dB' : '>6.0 dB'} = 0 PTS, 1 Life Lost)</span>
                     </div>
                   )}
                 </div>
