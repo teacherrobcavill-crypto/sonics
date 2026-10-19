@@ -340,7 +340,7 @@ export const CompressorLab: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
             
             {/* Left Column: Input ADSR Envelope (Before Compression) */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3 flex flex-col h-full">
               <AdsrEnvelopeCard
                 mode="input"
                 params={params}
@@ -434,7 +434,7 @@ export const CompressorLab: React.FC = () => {
             </div>
 
             {/* Right Column: Output ADSR Envelope (Post Compression with Real-Time Warnings) */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3 flex flex-col h-full">
               <AdsrEnvelopeCard
                 mode="output"
                 params={params}
