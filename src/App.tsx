@@ -65,6 +65,19 @@ export const App: React.FC = () => {
       }
     }
   }, []);
+
+  // Auto-sync any previously earned local scores to Cloud Firestore on startup
+  useEffect(() => {
+    if (isFirebaseReady()) {
+      const stored = getStoredProfiles();
+      for (const profile of Object.values(stored)) {
+        if (profile.stats && profile.stats.totalScore > 0) {
+          cloudSyncStudentProfile(profile).catch(() => {});
+        }
+      }
+    }
+  }, []);
+
   const [activeTab, setActiveTab] = useState<AppTab>('peak_master');
   const [showStats, setShowStats] = useState(false);
   const [latestResult, setLatestResult] = useState<RoundResult | null>(null);
