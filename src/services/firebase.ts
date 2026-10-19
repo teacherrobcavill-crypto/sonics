@@ -406,8 +406,8 @@ export async function cloudUpdateStudentTheme(
   }
 }
 
-// Monday 19 October 2026 Fresh Launch Cutoff
-export const PRE_LAUNCH_WIPE_TIMESTAMP = 1792432500000;
+// Monday 19 October 2026 Fresh Launch Cutoff (post-testing wipe)
+export const PRE_LAUNCH_WIPE_TIMESTAMP = 1792445300000;
 
 export function isPreLaunchPeriod(): boolean {
   return Date.now() < PRE_LAUNCH_WIPE_TIMESTAMP;
