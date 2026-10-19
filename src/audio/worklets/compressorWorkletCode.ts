@@ -27,6 +27,29 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
     this.bypassed = false;
     this.autoGain = false;
 
+    // Advanced: Parallel Blender & Sidechain Filtering
+    this.mixLinear = 1.0;
+    this.scHpfHz = 80.0;
+    this.scHpfActive = false;
+    this.scMidFreq = 2500.0;
+    this.scMidGainDb = 0.0;
+    this.scMidActive = false;
+    this.scMonitor = false;
+
+    // Sidechain Biquad Filter States (Direct Form II Transposed)
+    this.hpfB0 = 1.0; this.hpfB1 = 0.0; this.hpfB2 = 0.0;
+    this.hpfA1 = 0.0; this.hpfA2 = 0.0;
+    this.hpfS1_L = 0.0; this.hpfS2_L = 0.0;
+    this.hpfS1_R = 0.0; this.hpfS2_R = 0.0;
+
+    this.midB0 = 1.0; this.midB1 = 0.0; this.midB2 = 0.0;
+    this.midA1 = 0.0; this.midA2 = 0.0;
+    this.midS1_L = 0.0; this.midS2_L = 0.0;
+    this.midS1_R = 0.0; this.midS2_R = 0.0;
+
+    this.updateHpfCoeffs();
+    this.updateMidCoeffs();
+
     // Ballistics and envelope state
     this.envelopeDb = 0.0;
     this.preGainEnergy300 = 0.0;
@@ -67,17 +90,123 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         this.autoGain = Boolean(p.autoGain);
         this.attackMs = p.attackMs || 10.0;
         this.releaseMs = p.releaseMs || 100.0;
+
+        // Advanced controls sync
+        if (p.mixPercent !== undefined) {
+          this.mixLinear = Math.max(0.0, Math.min(100.0, p.mixPercent)) / 100.0;
+        }
+
+        if (p.scHpfHz !== undefined && p.scHpfHz !== this.scHpfHz) {
+          this.scHpfHz = Math.max(20.0, Math.min(150.0, p.scHpfHz));
+          this.updateHpfCoeffs();
+        }
+        if (p.scHpfActive !== undefined) {
+          this.scHpfActive = Boolean(p.scHpfActive);
+        }
+
+        let needMidUpdate = false;
+        if (p.scMidFreq !== undefined && p.scMidFreq !== this.scMidFreq) {
+          this.scMidFreq = Math.max(200.0, Math.min(8000.0, p.scMidFreq));
+          needMidUpdate = true;
+        }
+        if (p.scMidGainDb !== undefined && p.scMidGainDb !== this.scMidGainDb) {
+          this.scMidGainDb = Math.max(-12.0, Math.min(12.0, p.scMidGainDb));
+          needMidUpdate = true;
+        }
+        if (needMidUpdate) {
+          this.updateMidCoeffs();
+        }
+        if (p.scMidActive !== undefined) {
+          this.scMidActive = Boolean(p.scMidActive);
+        }
+
+        if (p.scMonitor !== undefined) {
+          this.scMonitor = Boolean(p.scMonitor);
+        }
       } else if (msg.type === 'setSampleRate') {
         this.fs = msg.sampleRate || 44100;
         this.alpha300 = Math.exp(-1.0 / (0.300 * this.fs));
         this.telemetryInterval = Math.round(this.fs / 60); // 60 FPS update rate
+        this.updateHpfCoeffs();
+        this.updateMidCoeffs();
       } else if (msg.type === 'reset') {
         this.envelopeDb = 0.0;
         this.preGainEnergy300 = 0.0;
         this.avgGr300 = 0.0;
         this.currentGrDb = 0.0;
+        this.hpfS1_L = 0; this.hpfS2_L = 0; this.hpfS1_R = 0; this.hpfS2_R = 0;
+        this.midS1_L = 0; this.midS2_L = 0; this.midS1_R = 0; this.midS2_R = 0;
       }
     };
+  }
+
+  updateHpfCoeffs() {
+    const fc = Math.max(20.0, Math.min(150.0, this.scHpfHz));
+    const w0 = 2.0 * Math.PI * fc / this.fs;
+    const cosw0 = Math.cos(w0);
+    const sinw0 = Math.sin(w0);
+    const alpha = sinw0 / (2.0 * 0.7071);
+    const b0 = (1.0 + cosw0) * 0.5;
+    const b1 = -(1.0 + cosw0);
+    const b2 = (1.0 + cosw0) * 0.5;
+    const a0 = 1.0 + alpha;
+    const a1 = -2.0 * cosw0;
+    const a2 = 1.0 - alpha;
+    this.hpfB0 = b0 / a0;
+    this.hpfB1 = b1 / a0;
+    this.hpfB2 = b2 / a0;
+    this.hpfA1 = a1 / a0;
+    this.hpfA2 = a2 / a0;
+  }
+
+  updateMidCoeffs() {
+    const f0 = Math.max(200.0, Math.min(8000.0, this.scMidFreq));
+    const gainDb = Math.max(-12.0, Math.min(12.0, this.scMidGainDb));
+    const A = Math.pow(10.0, gainDb / 40.0);
+    const w0 = 2.0 * Math.PI * f0 / this.fs;
+    const cosw0 = Math.cos(w0);
+    const sinw0 = Math.sin(w0);
+    const Q = 1.2;
+    const alpha = sinw0 / (2.0 * Q);
+    const b0 = 1.0 + alpha * A;
+    const b1 = -2.0 * cosw0;
+    const b2 = 1.0 - alpha * A;
+    const a0 = 1.0 + alpha / A;
+    const a1 = -2.0 * cosw0;
+    const a2 = 1.0 - alpha / A;
+    this.midB0 = b0 / a0;
+    this.midB1 = b1 / a0;
+    this.midB2 = b2 / a0;
+    this.midA1 = a1 / a0;
+    this.midA2 = a2 / a0;
+  }
+
+  processHpfL(x) {
+    const y = this.hpfB0 * x + this.hpfS1_L;
+    this.hpfS1_L = this.hpfB1 * x - this.hpfA1 * y + this.hpfS2_L;
+    this.hpfS2_L = this.hpfB2 * x - this.hpfA2 * y;
+    return y;
+  }
+
+  processHpfR(x) {
+    const y = this.hpfB0 * x + this.hpfS1_R;
+    this.hpfS1_R = this.hpfB1 * x - this.hpfA1 * y + this.hpfS2_R;
+    this.hpfS2_R = this.hpfB2 * x - this.hpfA2 * y;
+    return y;
+  }
+
+  processMidL(x) {
+    const y = this.midB0 * x + this.midS1_L;
+    this.midS1_L = this.midB1 * x - this.midA1 * y + this.midS2_L;
+    this.midS2_L = this.midB2 * x - this.midA2 * y;
+    return y;
+  }
+
+  processMidR(x) {
+    const y = this.midB0 * x + this.midS1_R;
+    this.midS1_R = this.midB1 * x - this.midA1 * y + this.midS2_R;
+    this.midS2_R = this.midB2 * x - this.midA2 * y;
+    return y;
   }
 
   computeTargetGainReduction(sidechainDb) {
@@ -173,14 +302,28 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       this.inRmsAccumL += inL * inL;
       this.inRmsAccumR += inR * inR;
 
-      // 2. Feed-Forward Sidechain Detection (Stereo Maximum)
-      const scLevel = Math.max(Math.abs(inL), Math.abs(inR));
+      // 2. Feed-Forward Sidechain Filtering (HPF & Sweepable Mid Band)
+      let scL = inL;
+      let scR = inR;
+
+      if (this.scHpfActive) {
+        scL = this.processHpfL(scL);
+        scR = this.processHpfR(scR);
+      }
+
+      if (this.scMidActive && Math.abs(this.scMidGainDb) > 0.05) {
+        scL = this.processMidL(scL);
+        scR = this.processMidR(scR);
+      }
+
+      // 3. Sidechain Detection (Stereo Maximum of Filtered Signal)
+      const scLevel = Math.max(Math.abs(scL), Math.abs(scR));
       const scDb = 20.0 * Math.log10(Math.max(scLevel, 1e-6));
 
-      // 3. Static Gain Computer with Soft-Knee
+      // 4. Static Gain Computer with Soft-Knee
       const targetGrDb = this.computeTargetGainReduction(scDb);
 
-      // 4. Branching Attack / Release Envelope Filter
+      // 5. Branching Attack / Release Envelope Filter
       if (targetGrDb < this.envelopeDb) {
         this.envelopeDb = this.alphaAtt * this.envelopeDb + (1.0 - this.alphaAtt) * targetGrDb;
       } else {
@@ -192,15 +335,31 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       this.grMaxInInterval = Math.max(this.grMaxInInterval, this.envelopeDb);
       this.avgGr300 = this.alpha300 * this.avgGr300 + (1.0 - this.alpha300) * Math.abs(this.envelopeDb);
 
-      // 5. Total VCA Gain
+      // 6. Total VCA Gain
       const grLinear = Math.pow(10.0, this.envelopeDb / 20.0);
       const vcaGain = grLinear * autoGainLinear;
 
-      // 6. Direct Output with Failsafe Ear-Protection Ceiling (-0.5 dBFS / 0.95 amplitude)
-      // Clamps audio so transients or boosts never blast ears or cause distortion
-      let resL = inL * vcaGain;
-      let resR = inR * vcaGain;
+      // 7. Parallel Blender (NY style) & Sidechain Monitor Routing
+      let resL, resR;
+      if (this.scMonitor) {
+        // Monitor mode: engineer auditions the filtered sidechain detection path
+        resL = scL;
+        resR = scR;
+      } else {
+        const wetL = inL * vcaGain;
+        const wetR = inR * vcaGain;
 
+        if (this.mixLinear < 0.999) {
+          // Parallel blend: dry uncompressed + wet compressed
+          resL = (1.0 - this.mixLinear) * inL + this.mixLinear * wetL;
+          resR = (1.0 - this.mixLinear) * inR + this.mixLinear * wetR;
+        } else {
+          resL = wetL;
+          resR = wetR;
+        }
+      }
+
+      // 8. Failsafe Ear-Protection Ceiling (-0.5 dBFS / 0.95 amplitude)
       resL = Math.max(-0.95, Math.min(0.95, resL));
       resR = Math.max(-0.95, Math.min(0.95, resR));
 

@@ -15,6 +15,7 @@ import { RotaryKnob } from './RotaryKnob';
 import { AdsrEnvelopeCard } from './AdsrEnvelopeCard';
 import { CompressorPresetsCard } from './CompressorPresetsCard';
 import { CompressorDiagnosticsHUD } from './CompressorDiagnosticsHUD';
+import { AdvancedCompressorControls } from './AdvancedCompressorControls';
 import {
   Play,
   Pause,
@@ -351,8 +352,8 @@ export const CompressorLab: React.FC = () => {
           
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-stretch">
             
-            {/* Left Column: Tailored Starting Point Presets (Double Column) */}
-            <div className="lg:col-span-5 flex flex-col h-full">
+            {/* Left Column: Tailored Starting Point Presets (Double Column, Compact) */}
+            <div className="lg:col-span-3 flex flex-col h-full">
               <CompressorPresetsCard
                 stem={selectedStem}
                 currentParams={params}
@@ -361,24 +362,33 @@ export const CompressorLab: React.FC = () => {
               />
             </div>
 
-            {/* Center Column: Focused Compact VU Needle Meter & Controls */}
-            <div className="lg:col-span-3 flex flex-col justify-between space-y-3 bg-studio-950/40 p-2 sm:p-2.5 rounded-2xl border border-studio-800/80">
+            {/* Center Column: Focused VU Needle Meter, Tabs & Bypass (Spacious & 100% Viewable) */}
+            <div className="lg:col-span-5 flex flex-col justify-between space-y-3 bg-studio-950/40 p-2.5 sm:p-3 rounded-2xl border border-studio-800/80">
               {/* Display Header Mode Tabs & Controls */}
-              <div className="flex items-start justify-between px-1">
-                <span className="text-xs font-mono font-bold text-slate-400 flex items-center gap-1.5 pt-1">
-                  <Volume2 className="w-3.5 h-3.5 text-studio-accent" />
-                  <span className="truncate">GAIN REDUCTION</span>
-                </span>
+              <div className="flex flex-col gap-2 pb-2.5 border-b border-studio-800/80">
+                {/* Top Row: Title & SC Audition Indicator */}
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-mono font-bold text-slate-300 flex items-center gap-1.5">
+                    <Volume2 className="w-3.5 h-3.5 text-studio-accent" />
+                    <span>GAIN REDUCTION</span>
+                  </span>
 
-                {/* Mode Tabs and Auto Level / Bypass stacked on the right */}
-                <div className="flex flex-col items-end gap-1.5">
+                  {params.scMonitor && (
+                    <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-amber-500/25 border border-amber-400 text-amber-300 animate-pulse">
+                      SC AUDITION ACTIVE
+                    </span>
+                  )}
+                </div>
+
+                {/* Controls Row: Mode Selector Tabs and Action Buttons */}
+                <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 px-1">
                   {/* 3-Mode Selector Tabs */}
                   <div className="flex p-0.5 bg-studio-950 rounded-xl border border-studio-800 text-[10px] font-mono font-bold">
                     <button
                       type="button"
                       onClick={() => setDisplayMode('vu')}
                       className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                        displayMode === 'vu' ? 'bg-amber-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                        displayMode === 'vu' ? 'bg-amber-500 text-studio-950 shadow-sm font-black' : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       <Gauge className="w-3 h-3" />
@@ -388,7 +398,7 @@ export const CompressorLab: React.FC = () => {
                       type="button"
                       onClick={() => setDisplayMode('bars')}
                       className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                        displayMode === 'bars' ? 'bg-cyan-500 text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                        displayMode === 'bars' ? 'bg-cyan-500 text-studio-950 shadow-sm font-black' : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       <BarChart2 className="w-3 h-3" />
@@ -398,7 +408,7 @@ export const CompressorLab: React.FC = () => {
                       type="button"
                       onClick={() => setDisplayMode('wave')}
                       className={`px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer ${
-                        displayMode === 'wave' ? 'bg-studio-accent text-studio-950 shadow-sm' : 'text-slate-400 hover:text-white'
+                        displayMode === 'wave' ? 'bg-studio-accent text-studio-950 shadow-sm font-black' : 'text-slate-400 hover:text-white'
                       }`}
                     >
                       <Activity className="w-3 h-3" />
@@ -407,11 +417,11 @@ export const CompressorLab: React.FC = () => {
                   </div>
 
                   {/* Dual Action Buttons: Auto-Level & Bypass */}
-                  <div className="flex items-center gap-1.5 w-full">
+                  <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => updateParam('autoGain', !params.autoGain)}
-                      className={`flex-1 py-0.5 px-1.5 rounded-lg text-[9px] font-mono font-bold flex items-center justify-center space-x-1 transition-all border cursor-pointer ${
+                      className={`py-1 px-2.5 rounded-lg text-[9.5px] font-mono font-bold flex items-center justify-center space-x-1 transition-all border cursor-pointer ${
                         params.autoGain
                           ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 shadow-sm'
                           : 'bg-studio-950 border-studio-800 text-slate-500 hover:text-slate-300'
@@ -425,7 +435,7 @@ export const CompressorLab: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => updateParam('bypassed', !params.bypassed)}
-                      className={`flex-1 py-0.5 px-1.5 rounded-lg text-[9px] font-mono font-bold flex items-center justify-center space-x-1 transition-all border cursor-pointer ${
+                      className={`py-1 px-2.5 rounded-lg text-[9.5px] font-mono font-bold flex items-center justify-center space-x-1 transition-all border cursor-pointer ${
                         params.bypassed
                           ? 'bg-rose-600 text-white border-rose-500 shadow-md shadow-rose-600/30 ring-1 ring-rose-400'
                           : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white hover:border-slate-700'
@@ -525,6 +535,12 @@ export const CompressorLab: React.FC = () => {
               formatValue={v => `${v.toFixed(0)} ms`}
             />
           </div>
+
+          {/* Advanced Controls Reveal: Parallel Blender, Sidechain HPF, Sweepable Mid Focus & Monitor */}
+          <AdvancedCompressorControls
+            params={params}
+            onUpdateParam={updateParam}
+          />
         </div>
       </div>
 

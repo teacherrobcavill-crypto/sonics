@@ -11,6 +11,15 @@ export interface CompressorParams {
   kneeDb: number;            // 0.0 dB to 24.0 dB (default: 4.0 dB quadratic soft-knee)
   autoGain: boolean;         // Auto-gain compensation mode
   bypassed: boolean;         // Studio hardware bypass switch
+
+  // Advanced Controls: Parallel Blender & Sidechain Filtering
+  mixPercent: number;        // 0.0 to 100.0% (default: 100.0% wet)
+  scHpfHz: number;           // 20.0 to 150.0 Hz (default: 80.0 Hz)
+  scHpfActive: boolean;      // HPF sidechain filter toggle (default: false)
+  scMidFreq: number;         // 200.0 to 8000.0 Hz (default: 2500.0 Hz)
+  scMidGainDb: number;       // -12.0 to +12.0 dB (default: 0.0 dB)
+  scMidActive: boolean;      // Mid band sidechain focus toggle (default: false)
+  scMonitor: boolean;        // Sidechain listen / monitor switch (default: false)
 }
 
 export const DEFAULT_COMPRESSOR_PARAMS: CompressorParams = {
@@ -20,7 +29,15 @@ export const DEFAULT_COMPRESSOR_PARAMS: CompressorParams = {
   releaseMs: 100.0,
   kneeDb: 4.0,
   autoGain: true,
-  bypassed: false
+  bypassed: false,
+
+  mixPercent: 100.0,
+  scHpfHz: 80.0,
+  scHpfActive: false,
+  scMidFreq: 2500.0,
+  scMidGainDb: 0.0,
+  scMidActive: false,
+  scMonitor: false
 };
 
 export interface CompressorTelemetry {

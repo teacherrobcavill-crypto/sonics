@@ -40,7 +40,7 @@ export const CompressorPresetsCard: React.FC<CompressorPresetsCardProps> = ({
       </div>
 
       {/* 2-Column Preset Title-Only Buttons */}
-      <div className="grid grid-cols-2 gap-2 flex-grow content-center">
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-2 flex-grow content-center">
         {presets.map((preset) => {
           const isActive = activePresetId === preset.id;
 
@@ -49,13 +49,13 @@ export const CompressorPresetsCard: React.FC<CompressorPresetsCardProps> = ({
               key={preset.id}
               type="button"
               onClick={() => onApplyPreset(preset.params, preset.id)}
-              className={`py-2.5 px-2.5 rounded-xl text-left transition-all border cursor-pointer relative overflow-hidden flex items-center justify-between group active:scale-[0.98] ${
+              className={`py-2 px-2 sm:py-2.5 sm:px-2.5 rounded-xl text-left transition-all border cursor-pointer relative overflow-hidden flex items-center justify-between group active:scale-[0.98] ${
                 isActive
                   ? 'bg-cyan-500/20 border-cyan-400 text-white shadow-md ring-1 ring-cyan-400/50'
                   : 'bg-studio-900 border-studio-800 text-slate-300 hover:text-white hover:border-slate-700 hover:bg-studio-850'
               }`}
             >
-              <span className="text-[11px] font-bold tracking-tight truncate">
+              <span className="text-[10px] sm:text-[11px] font-bold tracking-tight truncate">
                 {preset.name}
               </span>
               

@@ -11,6 +11,7 @@ interface RotaryKnobProps {
   isLogarithmic?: boolean;
   isRatioCurve?: boolean;
   color?: string;
+  size?: 'sm' | 'md';
   onChange: (val: number) => void;
   formatValue?: (val: number) => string;
 }
@@ -26,6 +27,7 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
   isLogarithmic = false,
   isRatioCurve = false,
   color = '#00f0ff',
+  size = 'md',
   onChange,
   formatValue
 }) => {
@@ -144,10 +146,14 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
 
   const displayVal = formatValue ? formatValue(value) : `${value.toFixed(1)}${unit}`;
 
+  const isSmall = size === 'sm';
+
   return (
     <div className="flex flex-col items-center select-none group touch-none">
       {/* Parameter Label */}
-      <span className="text-[10px] font-mono font-bold tracking-wider text-slate-300 uppercase mb-1.5 truncate max-w-[85px] text-center">
+      <span className={`font-mono font-bold tracking-wider text-slate-300 uppercase mb-1.5 truncate text-center ${
+        isSmall ? 'text-[9px] max-w-[70px]' : 'text-[10px] max-w-[85px]'
+      }`}>
         {label}
       </span>
 
@@ -158,7 +164,9 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
         onDoubleClick={handleDoubleClick}
-        className={`relative w-16 h-16 sm:w-20 sm:h-20 rounded-full cursor-ns-resize flex items-center justify-center touch-none transition-transform duration-75 ${
+        className={`relative rounded-full cursor-ns-resize flex items-center justify-center touch-none transition-transform duration-75 ${
+          isSmall ? 'w-12 h-12 sm:w-14 sm:h-14' : 'w-16 h-16 sm:w-20 sm:h-20'
+        } ${
           isDragging ? 'scale-105 ring-2 ring-studio-accent' : 'hover:scale-102'
         }`}
         style={{
@@ -179,19 +187,25 @@ export const RotaryKnob: React.FC<RotaryKnobProps> = ({
         >
           {/* White / Colored Pointer Notch */}
           <div
-            className="absolute top-1.5 left-1/2 -translate-x-1/2 w-1.5 h-4 rounded-full shadow-md"
+            className={`absolute top-1 left-1/2 -translate-x-1/2 rounded-full shadow-md ${
+              isSmall ? 'w-1 h-2.5' : 'w-1.5 h-4'
+            }`}
             style={{ backgroundColor: color }}
           />
         </div>
 
         {/* Center Metal Cap */}
-        <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-full bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-700 border border-slate-600/60 shadow-inner flex items-center justify-center pointer-events-none">
-          <div className="w-2 h-2 rounded-full bg-slate-400/40" />
+        <div className={`rounded-full bg-gradient-to-tr from-slate-900 via-slate-800 to-slate-700 border border-slate-600/60 shadow-inner flex items-center justify-center pointer-events-none ${
+          isSmall ? 'w-5 h-5 sm:w-6 sm:h-6' : 'w-7 h-7 sm:w-9 sm:h-9'
+        }`}>
+          <div className="w-1.5 h-1.5 rounded-full bg-slate-400/40" />
         </div>
       </div>
 
       {/* Value Display Badge */}
-      <div className="mt-2 px-2.5 py-0.5 rounded-lg bg-studio-950 border border-studio-800 text-[11px] font-mono font-bold text-white shadow-inner min-w-[56px] text-center">
+      <div className={`mt-1.5 rounded-lg bg-studio-950 border border-studio-800 font-mono font-bold text-white shadow-inner text-center ${
+        isSmall ? 'px-1.5 py-0.5 text-[9.5px] min-w-[48px]' : 'px-2.5 py-0.5 text-[11px] min-w-[56px] mt-2'
+      }`}>
         {displayVal}
       </div>
     </div>
