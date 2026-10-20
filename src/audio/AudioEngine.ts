@@ -29,19 +29,19 @@ export const STEM_FOLDER_MAP: Partial<Record<AudioSourceType, string>> = {
 export const R2_AUDIO_BASE_URL = 'https://pub-97abab3a449c46dbaf20a8bf14597f3e.r2.dev/';
 
 const AUDIO_TRACK_FILENAMES: Record<Extract<AudioSourceType, 'dance_pop' | 'alt_rock' | 'electronic_pop' | 'hard_rock' | 'hip_hop'>, string> = {
-  dance_pop: 'dance-pop.m4a',
-  alt_rock: 'alt-rock.m4a',
-  electronic_pop: 'electronic-pop.m4a',
-  hard_rock: 'hard-rock.m4a',
-  hip_hop: 'hip-hop-rnb.m4a'
+  dance_pop: 'dance-pop.mp3',
+  alt_rock: 'alt-rock.mp3',
+  electronic_pop: 'electronic-pop.mp3',
+  hard_rock: 'hard-rock.mp3',
+  hip_hop: 'hip-hop-rnb.mp3'
 };
 
 const AUDIO_TRACK_URLS: Partial<Record<AudioSourceType, string>> = {
-  dance_pop: `${R2_AUDIO_BASE_URL}dance-pop.m4a`,
-  alt_rock: `${R2_AUDIO_BASE_URL}alt-rock.m4a`,
-  electronic_pop: `${R2_AUDIO_BASE_URL}electronic-pop.m4a`,
-  hard_rock: `${R2_AUDIO_BASE_URL}hard-rock.m4a`,
-  hip_hop: `${R2_AUDIO_BASE_URL}hip-hop-rnb.m4a`
+  dance_pop: `${R2_AUDIO_BASE_URL}dance-pop.mp3`,
+  alt_rock: `${R2_AUDIO_BASE_URL}alt-rock.mp3`,
+  electronic_pop: `${R2_AUDIO_BASE_URL}electronic-pop.mp3`,
+  hard_rock: `${R2_AUDIO_BASE_URL}hard-rock.mp3`,
+  hip_hop: `${R2_AUDIO_BASE_URL}hip-hop-rnb.mp3`
 };
 
 export class AudioEngine {
@@ -1226,22 +1226,19 @@ export class AudioEngine {
     try {
       const stems: Partial<Record<StemType, AudioBuffer>> = {};
       const promises = STEM_TYPES.map(async (stem) => {
-        const r2M4aUrl = `${R2_AUDIO_BASE_URL}stems/htdemucs/${folder}/${stem}.m4a`;
-        const localM4aUrl = `${import.meta.env.BASE_URL}audio/stems/htdemucs/${folder}/${stem}.m4a`;
-        const localMp3Url = `${import.meta.env.BASE_URL}audio/stems/htdemucs/${folder}/${stem}.mp3`;
+        const r2Url = `${R2_AUDIO_BASE_URL}stems/htdemucs/${folder}/${stem}.mp3`;
+        const localUrl = `${import.meta.env.BASE_URL}audio/stems/htdemucs/${folder}/${stem}.mp3`;
 
         let resp: Response | null = null;
-        // Priority: 1. Cloudflare R2 AAC (.m4a) -> 2. Local AAC (.m4a) -> 3. Local MP3 fallback
-        for (const candidateUrl of [r2M4aUrl, localM4aUrl, localMp3Url]) {
-          try {
-            const r = await fetch(candidateUrl);
-            if (r.ok) {
-              resp = r;
-              break;
-            }
-          } catch {
-            // continue fallback chain
+        try {
+          const r = await fetch(r2Url);
+          if (r.ok && r.headers.get('content-type')?.includes('audio')) {
+            resp = r;
           }
+        } catch {}
+
+        if (!resp) {
+          resp = await fetch(localUrl);
         }
 
         if (!resp || !resp.ok) throw new Error(`Failed fetching stem ${folder}/${stem}`);
