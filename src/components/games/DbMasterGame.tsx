@@ -50,6 +50,7 @@ interface DbMasterGameProps {
   isPracticeMode?: boolean;
   onTogglePracticeMode?: (enabled: boolean) => void;
   isActive?: boolean;
+  isAdmin?: boolean;
 }
 
 interface TrackInfo {
@@ -173,7 +174,8 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
   isMobile = false,
   isPracticeMode = false,
   onTogglePracticeMode,
-  isActive = true
+  isActive = true,
+  isAdmin = false
 }) => {
   const isDailyLocked = !isPracticeMode && !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
 
@@ -210,10 +212,13 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
     return saved?.livesLostInFirst10 ?? 0;
   });
   const [isStemBalanceUnlocked, setIsStemBalanceUnlocked] = useState<boolean>(() => {
+    if (isAdmin) return true;
     const saved = getPersistedGameSession('db_master');
     return saved?.isStemBalanceUnlocked ?? false;
   });
   const [stemUnlockedMilestone, setStemUnlockedMilestone] = useState<'unlocked' | 'failed' | null>(null);
+
+  const effectiveStemUnlocked = isAdmin || isStemBalanceUnlocked;
 
   // Persist session state so switching tabs or refreshing never resets lives
   useEffect(() => {
@@ -689,7 +694,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
 
     // Moving from Round 10 to Round 11:
     if (nextRound === 11) {
-      const qualifies = isStemBalanceUnlocked || lives >= 2 || livesLostInFirst10 <= 1;
+      const qualifies = isAdmin || isStemBalanceUnlocked || lives >= 2 || livesLostInFirst10 <= 1;
       if (qualifies) {
         setIsStemBalanceUnlocked(true);
         setSubMode('stem_balance');
@@ -699,10 +704,10 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
       }
     }
 
-    if (subMode === 'single_fader' || (nextRound === 11 && !isStemBalanceUnlocked)) {
+    if (subMode === 'single_fader' || (nextRound === 11 && !effectiveStemUnlocked)) {
       generateNewRound(nextRound);
     }
-  }, [roundCount, lives, livesLostInFirst10, isStemBalanceUnlocked, onBonusPoints, generateNewRound, subMode]);
+  }, [roundCount, lives, livesLostInFirst10, isStemBalanceUnlocked, effectiveStemUnlocked, isAdmin, onBonusPoints, generateNewRound, subMode]);
 
   // Proceed to Stem Balance (Round 11) automatically when unlocked
   const handleProceedToStemBalance = useCallback(() => {
@@ -958,7 +963,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
                   <SlidersHorizontal className="w-3 h-3" />
                   <span>Single</span>
                 </button>
-                {isStemBalanceUnlocked ? (
+                {effectiveStemUnlocked ? (
                   <button
                     type="button"
                     onClick={() => setSubMode('stem_balance')}
@@ -1035,7 +1040,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
                   <SlidersHorizontal className="w-3 h-3" />
                   <span>Single Track</span>
                 </button>
-                {isStemBalanceUnlocked ? (
+                {effectiveStemUnlocked ? (
                   <button
                     type="button"
                     onClick={() => setSubMode('stem_balance')}

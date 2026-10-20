@@ -753,6 +753,7 @@ export const App: React.FC = () => {
               isPracticeMode={Boolean(practiceModes['db_master'])}
               onTogglePracticeMode={(enabled) => handleTogglePracticeMode('db_master', enabled)}
               isActive={!showStats && activeTab === 'db_master'}
+              isAdmin={Boolean(currentStudent?.isAdmin || currentStudent?.id === 'rob')}
             />
           </div>
 
