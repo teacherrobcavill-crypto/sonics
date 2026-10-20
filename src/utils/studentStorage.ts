@@ -759,3 +759,62 @@ export function exportMailingListCSV(entries: LeaderboardEntry[]): void {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Persistent daily game session state (lives, round, score, game over/victory)
+ * Prevents resetting lives by refreshing the page or switching tabs.
+ */
+export interface PersistedGameSession {
+  roundCount: number;
+  lives: number;
+  isGameOver: boolean;
+  isVictory: boolean;
+  sessionScore: number;
+  livesLostInFirst10?: number;
+  isStemBalanceUnlocked?: boolean;
+  subMode?: 'stem_balance' | 'single_fader';
+}
+
+const STORAGE_KEY_GAME_SESSIONS = 'soniceq_daily_game_sessions_v1';
+
+interface StoredDailySessions {
+  date: string;
+  userId: string;
+  modes: Partial<Record<GameMode, PersistedGameSession>>;
+}
+
+export function getPersistedGameSession(mode: GameMode, studentId?: string | null): PersistedGameSession | null {
+  const today = getTodayDateString();
+  const userKey = studentId || getActiveStudentId() || 'guest';
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_GAME_SESSIONS);
+    if (!raw) return null;
+    const parsed: StoredDailySessions = JSON.parse(raw);
+    if (parsed && parsed.date === today && parsed.userId === userKey && parsed.modes && parsed.modes[mode]) {
+      return parsed.modes[mode] || null;
+    }
+  } catch {}
+  return null;
+}
+
+export function savePersistedGameSession(mode: GameMode, session: PersistedGameSession, studentId?: string | null): void {
+  const today = getTodayDateString();
+  const userKey = studentId || getActiveStudentId() || 'guest';
+  try {
+    let container: StoredDailySessions = {
+      date: today,
+      userId: userKey,
+      modes: {}
+    };
+    const raw = localStorage.getItem(STORAGE_KEY_GAME_SESSIONS);
+    if (raw) {
+      const parsed: StoredDailySessions = JSON.parse(raw);
+      if (parsed && parsed.date === today && parsed.userId === userKey && parsed.modes) {
+        container = parsed;
+      }
+    }
+    container.modes[mode] = session;
+    localStorage.setItem(STORAGE_KEY_GAME_SESSIONS, JSON.stringify(container));
+  } catch {}
+}
+

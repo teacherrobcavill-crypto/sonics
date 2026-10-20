@@ -25,6 +25,7 @@ interface FilterDoctorGameProps {
   isMobile?: boolean;
   isPracticeMode?: boolean;
   onTogglePracticeMode?: (enabled: boolean) => void;
+  isActive?: boolean;
 }
 
 // Standard filter slopes available in Enhanced Mode (from 6 dB/oct up to 96 dB/oct)
@@ -50,7 +51,8 @@ export const FilterDoctorGame: React.FC<FilterDoctorGameProps> = ({
   onOpenLeaderboard,
   isMobile = false,
   isPracticeMode = false,
-  onTogglePracticeMode
+  onTogglePracticeMode,
+  isActive = true
 }) => {
   const isDailyLocked = !isPracticeMode && !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
 
@@ -146,10 +148,10 @@ export const FilterDoctorGame: React.FC<FilterDoctorGameProps> = ({
 
   // Synchronize user filter with AudioEngine in real time as user tweaks
   useEffect(() => {
-    if (!isRoundAnswered) {
+    if (isActive && !isRoundAnswered) {
       audioEngine.setUserFilter(currentUserFilters);
     }
-  }, [currentUserFilters, isRoundAnswered]);
+  }, [currentUserFilters, isRoundAnswered, isActive]);
 
   // Generate new HPF/LPF challenge (Mixed mode: cycles HPF -> LPF -> Both regularly)
   const generateNewRound = useCallback((targetRoundNumber?: number) => {
@@ -226,7 +228,6 @@ export const FilterDoctorGame: React.FC<FilterDoctorGameProps> = ({
     }
 
     setTargetFilters(newTargets);
-    audioEngine.setTargetFilter(newTargets);
 
     // Initial user filters sent to engine: starting at 25 Hz HPF & 18 kHz LPF
     const initialUser: FilterParams[] = modeChoice === 'both' ? [
@@ -235,19 +236,36 @@ export const FilterDoctorGame: React.FC<FilterDoctorGameProps> = ({
     ] : [
       { type: modeChoice, frequency: modeChoice === 'highpass' ? 25 : 18000, gain: 0, q: 0.707, slope: slope }
     ];
-    audioEngine.setUserFilter(initialUser);
 
-    // Default to listening to Target Filter first
-    audioEngine.setListeningMode('target');
+    if (isActive) {
+      audioEngine.setTargetFilter(newTargets);
+      audioEngine.setUserFilter(initialUser);
+      audioEngine.setListeningMode('target');
+    }
 
     setIsRoundAnswered(false);
     setLastRoundResult(null);
     setStartTime(Date.now());
-  }, [roundCount, slope, isEnhancedMode]);
+  }, [roundCount, slope, isEnhancedMode, isActive]);
 
   useEffect(() => {
     generateNewRound(1);
   }, []);
+
+  // Re-sync AudioEngine when Filter Doctor becomes active
+  useEffect(() => {
+    if (isActive && targetFilters.length > 0) {
+      audioEngine.setMonoMode(false);
+      audioEngine.setCorrectionMode(false);
+      audioEngine.setStemMode(false);
+      audioEngine.resetDbLevels();
+      audioEngine.setTargetPan(0);
+      audioEngine.setUserPan(0);
+      audioEngine.setTargetFilter(targetFilters);
+      audioEngine.setUserFilter(currentUserFilters);
+      audioEngine.setListeningMode('target');
+    }
+  }, [isActive]);
 
   // Click or drag on Spectrum Display frequency dots & canvas
   const handleNodeDrag = (freq: number, filterType?: string) => {

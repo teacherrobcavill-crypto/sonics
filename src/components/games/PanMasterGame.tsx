@@ -21,6 +21,10 @@ import {
 import { FilterParams, GameMode, RoundResult } from '../../types';
 import { audioEngine } from '../../audio/AudioEngine';
 import { InlineTransport } from '../InlineTransport';
+import {
+  getPersistedGameSession,
+  savePersistedGameSession
+} from '../../utils/studentStorage';
 
 interface PanMasterGameProps {
   onRoundComplete: (result: RoundResult) => void;
@@ -35,6 +39,7 @@ interface PanMasterGameProps {
   isMobile?: boolean;
   isPracticeMode?: boolean;
   onTogglePracticeMode?: (enabled: boolean) => void;
+  isActive?: boolean;
 }
 
 /**
@@ -95,17 +100,44 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
   onNavigateToMode,
   isMobile = false,
   isPracticeMode = false,
-  onTogglePracticeMode
+  onTogglePracticeMode,
+  isActive = true
 }) => {
   const isDailyLocked = !isPracticeMode && !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
 
-  // Game session state
-  const [roundCount, setRoundCount] = useState<number>(1);
-  const [lives, setLives] = useState<number>(3);
-  const [isGameOver, setIsGameOver] = useState<boolean>(false);
-  const [isVictory, setIsVictory] = useState<boolean>(false);
-  const [sessionScore, setSessionScore] = useState<number>(0);
+  // Game session state (restored from daily persistence if available)
+  const [roundCount, setRoundCount] = useState<number>(() => {
+    const saved = getPersistedGameSession('pan_master');
+    return saved ? saved.roundCount : 1;
+  });
+  const [lives, setLives] = useState<number>(() => {
+    const saved = getPersistedGameSession('pan_master');
+    return saved ? saved.lives : 3;
+  });
+  const [isGameOver, setIsGameOver] = useState<boolean>(() => {
+    const saved = getPersistedGameSession('pan_master');
+    return saved ? saved.isGameOver : false;
+  });
+  const [isVictory, setIsVictory] = useState<boolean>(() => {
+    const saved = getPersistedGameSession('pan_master');
+    return saved ? saved.isVictory : false;
+  });
+  const [sessionScore, setSessionScore] = useState<number>(() => {
+    const saved = getPersistedGameSession('pan_master');
+    return saved ? saved.sessionScore : 0;
+  });
   const [round10Milestone, setRound10Milestone] = useState<'extra_life' | 'bonus_points' | null>(null);
+
+  // Persist session state so switching tabs or refreshing never resets lives
+  useEffect(() => {
+    savePersistedGameSession('pan_master', {
+      roundCount,
+      lives,
+      isGameOver,
+      isVictory,
+      sessionScore
+    });
+  }, [roundCount, lives, isGameOver, isVictory, sessionScore]);
 
   // Target mystery pan (-100 to +100)
   const [targetPan, setTargetPan] = useState<number>(0);
@@ -137,10 +169,6 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
 
   // Generate new random target pan
   const generateNewRound = useCallback(() => {
-    // Ensure all filter chains and dB levels are transparent and flat
-    audioEngine.resetFiltersToFlat();
-    audioEngine.resetDbLevels();
-
     // Generate random pan between -95 and +95 (avoid dead zero to ensure audible panning challenge)
     const sign = Math.random() > 0.5 ? 1 : -1;
     // Weighted slightly away from dead center: 10% to 95%
@@ -148,9 +176,13 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
     const newTarget = sign * magnitude;
 
     setTargetPan(newTarget);
-    audioEngine.setTargetPan(newTarget / 100);
-    audioEngine.setUserPan(0);
-    audioEngine.setListeningMode('target');
+    if (isActive) {
+      audioEngine.resetFiltersToFlat();
+      audioEngine.resetDbLevels();
+      audioEngine.setTargetPan(newTarget / 100);
+      audioEngine.setUserPan(0);
+      audioEngine.setListeningMode('target');
+    }
 
     // Default start point is explicitly Center (0%) every round
     setPinnedPan(0);
@@ -159,22 +191,35 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
     setLastRoundResult(null);
     setLastHitStatus(null);
     setStartTime(Date.now());
-  }, []);
+  }, [isActive]);
 
-  // Initial load: enable mono mode & reset filters for phase-pure panning, clean up on unmount
+  // Initial load: generate round 1 target
   useEffect(() => {
-    audioEngine.resetFiltersToFlat();
-    audioEngine.resetDbLevels();
-    audioEngine.setMonoMode(true);
     generateNewRound();
-
     return () => {
       audioEngine.setMonoMode(false);
       audioEngine.setTargetPan(0);
       audioEngine.setUserPan(0);
-      audioEngine.resetFiltersToFlat();
     };
-  }, [generateNewRound]);
+  }, []);
+
+  // Re-sync AudioEngine when Pan Master becomes the active tab
+  useEffect(() => {
+    if (isActive) {
+      audioEngine.setCorrectionMode(false);
+      audioEngine.setStemMode(false);
+      audioEngine.resetFiltersToFlat();
+      audioEngine.resetDbLevels();
+      audioEngine.setMonoMode(true);
+      audioEngine.setTargetPan(targetPan / 100);
+      audioEngine.setUserPan((pinnedPan ?? hoverPan ?? 0) / 100);
+      audioEngine.setListeningMode('target');
+    } else {
+      audioEngine.setMonoMode(false);
+      audioEngine.setTargetPan(0);
+      audioEngine.setUserPan(0);
+    }
+  }, [isActive]);
 
   // Auto-dismiss Round 10 milestone graphic after 3.2 seconds
   useEffect(() => {

@@ -663,117 +663,127 @@ export const App: React.FC = () => {
         )}
 
         {/* View Routing */}
-        {showStats ? (
+        {showStats && (
           <SessionStats
             stats={stats}
             history={history}
             onResetStats={handleResetStats}
           />
-        ) : (
-          <>
-            {activeTab === 'leaderboard' && (
-              <Leaderboard
-                currentStudent={currentStudent}
-                onOpenAuth={() => setIsAuthModalOpen(true)}
-                isMobile={isMobile}
-              />
-            )}
-
-            <div className={activeTab === 'peak_master' ? 'contents' : 'hidden'}>
-              <PeakMasterGame
-                onRoundComplete={handleRoundComplete}
-                onBonusPoints={handleBonusPoints}
-                currentStreak={stats.currentStreak}
-                totalScore={stats.totalScore}
-                remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'peak_master').remaining}
-                isCustomAudio={isCustomAudio}
-                onNavigateToSandbox={() => handleSwitchTab('sandbox')}
-                onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
-                onNavigateToMode={(mode) => handleSwitchTab(mode)}
-                isMobile={isMobile}
-                isPracticeMode={Boolean(practiceModes['peak_master'])}
-                onTogglePracticeMode={(enabled) => handleTogglePracticeMode('peak_master', enabled)}
-              />
-            </div>
-
-            <div className={activeTab === 'filter_doctor' ? 'contents' : 'hidden'}>
-              <FilterDoctorGame
-                onRoundComplete={handleRoundComplete}
-                currentStreak={stats.currentStreak}
-                totalScore={stats.totalScore}
-                remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'filter_doctor').remaining}
-                isCustomAudio={isCustomAudio}
-                onNavigateToSandbox={() => handleSwitchTab('sandbox')}
-                onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
-                isMobile={isMobile}
-                isPracticeMode={Boolean(practiceModes['filter_doctor'])}
-                onTogglePracticeMode={(enabled) => handleTogglePracticeMode('filter_doctor', enabled)}
-              />
-            </div>
-
-            <div className={activeTab === 'pan_master' ? 'contents' : 'hidden'}>
-              <PanMasterGame
-                onRoundComplete={handleRoundComplete}
-                onBonusPoints={handleBonusPoints}
-                currentStreak={stats.currentStreak}
-                totalScore={stats.totalScore}
-                remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'pan_master').remaining}
-                isCustomAudio={isCustomAudio}
-                onNavigateToSandbox={() => handleSwitchTab('sandbox')}
-                onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
-                onNavigateToMode={(mode) => handleSwitchTab(mode)}
-                isMobile={isMobile}
-                isPracticeMode={Boolean(practiceModes['pan_master'])}
-                onTogglePracticeMode={(enabled) => handleTogglePracticeMode('pan_master', enabled)}
-              />
-            </div>
-
-            <div className={activeTab === 'db_master' ? 'contents' : 'hidden'}>
-              <DbMasterGame
-                onRoundComplete={handleRoundComplete}
-                onBonusPoints={handleBonusPoints}
-                currentStreak={stats.currentStreak}
-                totalScore={stats.totalScore}
-                remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'db_master').remaining}
-                isCustomAudio={isCustomAudio}
-                onNavigateToSandbox={() => handleSwitchTab('sandbox')}
-                onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
-                onNavigateToMode={(mode) => handleSwitchTab(mode)}
-                isMobile={isMobile}
-                isPracticeMode={Boolean(practiceModes['db_master'])}
-                onTogglePracticeMode={(enabled) => handleTogglePracticeMode('db_master', enabled)}
-              />
-            </div>
-
-            <div className={activeTab === 'tye_match' ? 'contents' : 'hidden'}>
-              <EQMatchGame
-                onRoundComplete={handleRoundComplete}
-                currentStreak={stats.currentStreak}
-                totalScore={stats.totalScore}
-                remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'tye_match').remaining}
-                isCustomAudio={isCustomAudio}
-                onNavigateToSandbox={() => handleSwitchTab('sandbox')}
-                onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
-                isMobile={isMobile}
-                isPracticeMode={Boolean(practiceModes['tye_match'])}
-                onTogglePracticeMode={(enabled) => handleTogglePracticeMode('tye_match', enabled)}
-              />
-            </div>
-
-            {activeTab === 'sandbox' && (
-              <SandboxEQ isMobile={isMobile} />
-            )}
-
-            {activeTab === 'compressor_lab' && (
-              <CompressorLab
-                volume={volume}
-                isMuted={isMuted}
-                onVolumeChange={handleVolumeChange}
-                onToggleMute={handleToggleMute}
-              />
-            )}
-          </>
         )}
+
+        <div className={showStats ? 'hidden' : 'contents'}>
+          {activeTab === 'leaderboard' && (
+            <Leaderboard
+              currentStudent={currentStudent}
+              onOpenAuth={() => setIsAuthModalOpen(true)}
+              isMobile={isMobile}
+            />
+          )}
+
+          <div className={activeTab === 'peak_master' ? 'contents' : 'hidden'}>
+            <PeakMasterGame
+              key={`peak_master_${currentStudent?.id || 'guest'}`}
+              onRoundComplete={handleRoundComplete}
+              onBonusPoints={handleBonusPoints}
+              currentStreak={stats.currentStreak}
+              totalScore={stats.totalScore}
+              remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'peak_master').remaining}
+              isCustomAudio={isCustomAudio}
+              onNavigateToSandbox={() => handleSwitchTab('sandbox')}
+              onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
+              onNavigateToMode={(mode) => handleSwitchTab(mode)}
+              isMobile={isMobile}
+              isPracticeMode={Boolean(practiceModes['peak_master'])}
+              onTogglePracticeMode={(enabled) => handleTogglePracticeMode('peak_master', enabled)}
+              isActive={!showStats && activeTab === 'peak_master'}
+            />
+          </div>
+
+          <div className={activeTab === 'filter_doctor' ? 'contents' : 'hidden'}>
+            <FilterDoctorGame
+              key={`filter_doctor_${currentStudent?.id || 'guest'}`}
+              onRoundComplete={handleRoundComplete}
+              currentStreak={stats.currentStreak}
+              totalScore={stats.totalScore}
+              remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'filter_doctor').remaining}
+              isCustomAudio={isCustomAudio}
+              onNavigateToSandbox={() => handleSwitchTab('sandbox')}
+              onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
+              isMobile={isMobile}
+              isPracticeMode={Boolean(practiceModes['filter_doctor'])}
+              onTogglePracticeMode={(enabled) => handleTogglePracticeMode('filter_doctor', enabled)}
+              isActive={!showStats && activeTab === 'filter_doctor'}
+            />
+          </div>
+
+          <div className={activeTab === 'pan_master' ? 'contents' : 'hidden'}>
+            <PanMasterGame
+              key={`pan_master_${currentStudent?.id || 'guest'}`}
+              onRoundComplete={handleRoundComplete}
+              onBonusPoints={handleBonusPoints}
+              currentStreak={stats.currentStreak}
+              totalScore={stats.totalScore}
+              remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'pan_master').remaining}
+              isCustomAudio={isCustomAudio}
+              onNavigateToSandbox={() => handleSwitchTab('sandbox')}
+              onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
+              onNavigateToMode={(mode) => handleSwitchTab(mode)}
+              isMobile={isMobile}
+              isPracticeMode={Boolean(practiceModes['pan_master'])}
+              onTogglePracticeMode={(enabled) => handleTogglePracticeMode('pan_master', enabled)}
+              isActive={!showStats && activeTab === 'pan_master'}
+            />
+          </div>
+
+          <div className={activeTab === 'db_master' ? 'contents' : 'hidden'}>
+            <DbMasterGame
+              key={`db_master_${currentStudent?.id || 'guest'}`}
+              onRoundComplete={handleRoundComplete}
+              onBonusPoints={handleBonusPoints}
+              currentStreak={stats.currentStreak}
+              totalScore={stats.totalScore}
+              remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'db_master').remaining}
+              isCustomAudio={isCustomAudio}
+              onNavigateToSandbox={() => handleSwitchTab('sandbox')}
+              onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
+              onNavigateToMode={(mode) => handleSwitchTab(mode)}
+              isMobile={isMobile}
+              isPracticeMode={Boolean(practiceModes['db_master'])}
+              onTogglePracticeMode={(enabled) => handleTogglePracticeMode('db_master', enabled)}
+              isActive={!showStats && activeTab === 'db_master'}
+            />
+          </div>
+
+          <div className={activeTab === 'tye_match' ? 'contents' : 'hidden'}>
+            <EQMatchGame
+              key={`tye_match_${currentStudent?.id || 'guest'}`}
+              onRoundComplete={handleRoundComplete}
+              currentStreak={stats.currentStreak}
+              totalScore={stats.totalScore}
+              remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'tye_match').remaining}
+              isCustomAudio={isCustomAudio}
+              onNavigateToSandbox={() => handleSwitchTab('sandbox')}
+              onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
+              isMobile={isMobile}
+              isPracticeMode={Boolean(practiceModes['tye_match'])}
+              onTogglePracticeMode={(enabled) => handleTogglePracticeMode('tye_match', enabled)}
+              isActive={!showStats && activeTab === 'tye_match'}
+            />
+          </div>
+
+          {activeTab === 'sandbox' && (
+            <SandboxEQ isMobile={isMobile} />
+          )}
+
+          {activeTab === 'compressor_lab' && (
+            <CompressorLab
+              volume={volume}
+              isMuted={isMuted}
+              onVolumeChange={handleVolumeChange}
+              onToggleMute={handleToggleMute}
+            />
+          )}
+        </div>
 
         {/* Pro Audio Reference Guide Footer (Hidden on Ranks / Leaderboard and Compressor Lab tabs) */}
         {activeTab !== 'leaderboard' && activeTab !== 'compressor_lab' && (
@@ -829,8 +839,7 @@ export const App: React.FC = () => {
         onClose={() => setIsAllCompletedModalOpen(false)}
         onViewLeaderboard={() => {
           setIsAllCompletedModalOpen(false);
-          setActiveTab('leaderboard');
-          setShowStats(false);
+          handleSwitchTab('leaderboard');
         }}
         onContinuePractice={() => {
           setIsAllCompletedModalOpen(false);

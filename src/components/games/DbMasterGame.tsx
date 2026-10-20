@@ -31,6 +31,10 @@ import {
 import { GameMode, RoundResult, AudioSourceType, FilterParams } from '../../types';
 import { audioEngine, ListeningMode } from '../../audio/AudioEngine';
 import { StemBalanceConsole } from './StemBalanceConsole';
+import {
+  getPersistedGameSession,
+  savePersistedGameSession
+} from '../../utils/studentStorage';
 
 interface DbMasterGameProps {
   onRoundComplete: (result: RoundResult) => void;
@@ -45,6 +49,7 @@ interface DbMasterGameProps {
   isMobile?: boolean;
   isPracticeMode?: boolean;
   onTogglePracticeMode?: (enabled: boolean) => void;
+  isActive?: boolean;
 }
 
 interface TrackInfo {
@@ -167,23 +172,62 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
   onNavigateToMode,
   isMobile = false,
   isPracticeMode = false,
-  onTogglePracticeMode
+  onTogglePracticeMode,
+  isActive = true
 }) => {
   const isDailyLocked = !isPracticeMode && !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
 
-  // Session state
-  const [roundCount, setRoundCount] = useState<number>(1);
-  const [lives, setLives] = useState<number>(3);
-  const [isGameOver, setIsGameOver] = useState<boolean>(false);
-  const [isVictory, setIsVictory] = useState<boolean>(false);
-  const [sessionScore, setSessionScore] = useState<number>(0);
+  // Session state (restored from daily persistence if available)
+  const [roundCount, setRoundCount] = useState<number>(() => {
+    const saved = getPersistedGameSession('db_master');
+    return saved ? saved.roundCount : 1;
+  });
+  const [lives, setLives] = useState<number>(() => {
+    const saved = getPersistedGameSession('db_master');
+    return saved ? saved.lives : 3;
+  });
+  const [isGameOver, setIsGameOver] = useState<boolean>(() => {
+    const saved = getPersistedGameSession('db_master');
+    return saved ? saved.isGameOver : false;
+  });
+  const [isVictory, setIsVictory] = useState<boolean>(() => {
+    const saved = getPersistedGameSession('db_master');
+    return saved ? saved.isVictory : false;
+  });
+  const [sessionScore, setSessionScore] = useState<number>(() => {
+    const saved = getPersistedGameSession('db_master');
+    return saved ? saved.sessionScore : 0;
+  });
   const [round10Milestone, setRound10Milestone] = useState<'extra_life' | 'bonus_points' | null>(null);
 
   // Sub-Mode: 'single_fader' (Single Gain Fader, Default) vs 'stem_balance' (4-Stem Desk)
-  const [subMode, setSubMode] = useState<'stem_balance' | 'single_fader'>('single_fader');
-  const [livesLostInFirst10, setLivesLostInFirst10] = useState<number>(0);
-  const [isStemBalanceUnlocked, setIsStemBalanceUnlocked] = useState<boolean>(false);
+  const [subMode, setSubMode] = useState<'stem_balance' | 'single_fader'>(() => {
+    const saved = getPersistedGameSession('db_master');
+    return saved?.subMode || 'single_fader';
+  });
+  const [livesLostInFirst10, setLivesLostInFirst10] = useState<number>(() => {
+    const saved = getPersistedGameSession('db_master');
+    return saved?.livesLostInFirst10 ?? 0;
+  });
+  const [isStemBalanceUnlocked, setIsStemBalanceUnlocked] = useState<boolean>(() => {
+    const saved = getPersistedGameSession('db_master');
+    return saved?.isStemBalanceUnlocked ?? false;
+  });
   const [stemUnlockedMilestone, setStemUnlockedMilestone] = useState<'unlocked' | 'failed' | null>(null);
+
+  // Persist session state so switching tabs or refreshing never resets lives
+  useEffect(() => {
+    savePersistedGameSession('db_master', {
+      roundCount,
+      lives,
+      isGameOver,
+      isVictory,
+      sessionScore,
+      livesLostInFirst10,
+      isStemBalanceUnlocked,
+      subMode
+    });
+  }, [roundCount, lives, isGameOver, isVictory, sessionScore, livesLostInFirst10, isStemBalanceUnlocked, subMode]);
 
   const handleStemRoundComplete = (result: RoundResult) => {
     if (isPracticeMode) {
@@ -238,7 +282,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
 
   // Cleanup on unmount: reset dB levels to unity
   useEffect(() => {
-    generateNewRound(1);
+    generateNewRound(roundCount);
     return () => {
       audioEngine.resetDbLevels();
       if (animFrameRef.current) {
@@ -257,24 +301,6 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
       return;
     }
 
-    if (!isCustomAudio) {
-      audioEngine.setAudioSource(track.type).catch(err => {
-        console.warn('Track switch notice:', err);
-      });
-    }
-
-    // Ensure filter chains and pan are flat/transparent for accurate dB ear training
-    const flatFilter: FilterParams[] = [{
-      type: 'peaking',
-      frequency: 1000,
-      gain: 0,
-      q: 1.0
-    }];
-    audioEngine.setTargetFilter(flatFilter);
-    audioEngine.setUserFilter(flatFilter);
-    audioEngine.setTargetPan(0);
-    audioEngine.setUserPan(0);
-
     // Generate Target dB in 0.1 dB increments
     const targetDb = generateTargetDeltaDb();
     setTargetDelta(targetDb);
@@ -282,22 +308,43 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
     // Default user fader starts at 0.0 dB (Unity reference)
     setUserFaderDb(0.0);
 
-    // Apply the dB levels to the AudioEngine:
-    // Level [A] (Bypass) is 0 dB reference
-    // Level [B] (Target) is targetDb
-    // Level [C] (User) is 0.0 dB initially
-    audioEngine.setDbLevels(0, targetDb, 0.0);
+    if (isActive) {
+      if (!isCustomAudio) {
+        audioEngine.setAudioSource(track.type).catch(err => {
+          console.warn('Track switch notice:', err);
+        });
+      }
+
+      // Ensure filter chains and pan are flat/transparent for accurate dB ear training
+      const flatFilter: FilterParams[] = [{
+        type: 'peaking',
+        frequency: 1000,
+        gain: 0,
+        q: 1.0
+      }];
+      audioEngine.setTargetFilter(flatFilter);
+      audioEngine.setUserFilter(flatFilter);
+      audioEngine.setTargetPan(0);
+      audioEngine.setUserPan(0);
+
+      // Apply the dB levels to the AudioEngine:
+      // Level [A] (Bypass) is 0 dB reference
+      // Level [B] (Target) is targetDb
+      // Level [C] (User) is 0.0 dB initially
+      audioEngine.setDbLevels(0, targetDb, 0.0);
+
+      // Audition Reference Level [A] by default
+      audioEngine.setListeningMode('bypass');
+    }
 
     // Reset round states
     setIsRoundAnswered(false);
     setStartTime(Date.now());
+  }, [isCustomAudio, subMode, isActive]);
 
-    // Audition Reference Level [A] by default
-    audioEngine.setListeningMode('bypass');
-  }, [isCustomAudio, subMode]);
-
-  // Sub-mode audio engine switching (fires only when user or game changes subMode)
+  // Sub-mode audio engine switching (fires only when user or game changes subMode while active)
   useEffect(() => {
+    if (!isActive) return;
     if (subMode === 'stem_balance') {
       audioEngine.setStemMode(true);
     } else {
@@ -305,6 +352,34 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
       generateNewRound(roundCount);
     }
   }, [subMode]);
+
+  // Re-sync AudioEngine when dB Master becomes the active tab
+  useEffect(() => {
+    if (isActive) {
+      audioEngine.setMonoMode(false);
+      audioEngine.setCorrectionMode(false);
+      if (subMode === 'stem_balance') {
+        audioEngine.setStemMode(true);
+      } else {
+        audioEngine.setStemMode(false);
+        const flatFilter: FilterParams[] = [{
+          type: 'peaking',
+          frequency: 1000,
+          gain: 0,
+          q: 1.0
+        }];
+        audioEngine.setTargetFilter(flatFilter);
+        audioEngine.setUserFilter(flatFilter);
+        audioEngine.setTargetPan(0);
+        audioEngine.setUserPan(0);
+        audioEngine.setDbLevels(0, targetDelta, userFaderDb);
+        audioEngine.setListeningMode('bypass');
+      }
+    } else {
+      audioEngine.resetDbLevels();
+      audioEngine.setStemMode(false);
+    }
+  }, [isActive]);
 
 
   // Animated Stereo VU Activity Bar
@@ -668,9 +743,9 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
     generateNewRound(1);
   };
 
-  // Keyboard shortcut listener (Single Fader mode only)
+  // Keyboard shortcut listener (Single Fader mode only, when active)
   useEffect(() => {
-    if (subMode !== 'single_fader') return;
+    if (!isActive || subMode !== 'single_fader') return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -777,7 +852,8 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
     handleProceedToStemBalance,
     handleProceedToSingleFader,
     nudgeFader,
-    setFaderDirect
+    setFaderDirect,
+    isActive
   ]);
 
   // Current evaluation metrics (when answered)

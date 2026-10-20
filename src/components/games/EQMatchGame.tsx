@@ -41,6 +41,7 @@ interface EQMatchGameProps {
   isMobile?: boolean;
   isPracticeMode?: boolean;
   onTogglePracticeMode?: (enabled: boolean) => void;
+  isActive?: boolean;
 }
 
 export const EQMatchGame: React.FC<EQMatchGameProps> = ({
@@ -53,7 +54,8 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
   onOpenLeaderboard,
   isMobile = false,
   isPracticeMode = false,
-  onTogglePracticeMode
+  onTogglePracticeMode,
+  isActive = true
 }) => {
   const isDailyLocked = !isPracticeMode && !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
   const [filterType, setFilterType] = useState<FilterType>('peaking');
@@ -121,7 +123,6 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
     };
 
     setTargetFilter(target);
-    audioEngine.setTargetFilter(target);
 
     // Initial user settings matching valid bounds
     const initialFreq = nextType === 'lowshelf' ? 250 : nextType === 'highshelf' ? 4000 : 1000;
@@ -135,16 +136,18 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
       gain: 0,
       q: 1.41
     };
-    audioEngine.setUserFilter(initialUser);
 
-    // Set listening to Target EQ first
-    audioEngine.setListeningMode('target');
+    if (isActive) {
+      audioEngine.setTargetFilter(target);
+      audioEngine.setUserFilter(initialUser);
+      audioEngine.setListeningMode('target');
+    }
 
     setHintsUsed(0);
     setIsRoundAnswered(false);
     setLastRoundResult(null);
     setStartTime(Date.now());
-  }, [roundCount]);
+  }, [roundCount, isActive]);
 
   const handleRequestHint = () => {
     if (isRoundAnswered || hintsUsed >= 3) return;
@@ -156,11 +159,27 @@ export const EQMatchGame: React.FC<EQMatchGameProps> = ({
   }, []);
 
   useEffect(() => {
-    audioEngine.setCorrectionMode(true);
-    return () => {
+    if (isActive) {
+      audioEngine.setMonoMode(false);
+      audioEngine.setStemMode(false);
+      audioEngine.resetDbLevels();
+      audioEngine.setTargetPan(0);
+      audioEngine.setUserPan(0);
+      audioEngine.setCorrectionMode(true);
+      if (targetFilter) {
+        audioEngine.setTargetFilter(targetFilter);
+        audioEngine.setUserFilter({
+          type: filterType,
+          frequency: userFreq,
+          gain: userGain,
+          q: userQ
+        });
+        audioEngine.setListeningMode('target');
+      }
+    } else {
       audioEngine.setCorrectionMode(false);
-    };
-  }, []);
+    }
+  }, [isActive]);
 
   // Update user filter in real-time as they adjust sliders or drag
   const handleUserFilterChange = (params: { frequency: number; gain: number; q?: number }) => {

@@ -31,6 +31,10 @@ import {
   getWeightedPeakMasterFrequency,
   getNextStratifiedTargetFrequency
 } from '../../utils/frequencies';
+import {
+  getPersistedGameSession,
+  savePersistedGameSession
+} from '../../utils/studentStorage';
 
 interface PeakMasterGameProps {
   onRoundComplete: (result: RoundResult) => void;
@@ -45,6 +49,7 @@ interface PeakMasterGameProps {
   isMobile?: boolean;
   isPracticeMode?: boolean;
   onTogglePracticeMode?: (enabled: boolean) => void;
+  isActive?: boolean;
 }
 
 /**
@@ -111,17 +116,44 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
   onNavigateToMode,
   isMobile = false,
   isPracticeMode = false,
-  onTogglePracticeMode
+  onTogglePracticeMode,
+  isActive = true
 }) => {
   const isDailyLocked = !isPracticeMode && !isCustomAudio && remainingDailyRounds !== undefined && remainingDailyRounds <= 0;
 
-  // Game session states
-  const [roundCount, setRoundCount] = useState<number>(1);
-  const [lives, setLives] = useState<number>(3);
-  const [isGameOver, setIsGameOver] = useState<boolean>(false);
-  const [isVictory, setIsVictory] = useState<boolean>(false);
-  const [sessionScore, setSessionScore] = useState<number>(0);
+  // Game session states (restored from daily persistence if available)
+  const [roundCount, setRoundCount] = useState<number>(() => {
+    const saved = getPersistedGameSession('peak_master');
+    return saved ? saved.roundCount : 1;
+  });
+  const [lives, setLives] = useState<number>(() => {
+    const saved = getPersistedGameSession('peak_master');
+    return saved ? saved.lives : 3;
+  });
+  const [isGameOver, setIsGameOver] = useState<boolean>(() => {
+    const saved = getPersistedGameSession('peak_master');
+    return saved ? saved.isGameOver : false;
+  });
+  const [isVictory, setIsVictory] = useState<boolean>(() => {
+    const saved = getPersistedGameSession('peak_master');
+    return saved ? saved.isVictory : false;
+  });
+  const [sessionScore, setSessionScore] = useState<number>(() => {
+    const saved = getPersistedGameSession('peak_master');
+    return saved ? saved.sessionScore : 0;
+  });
   const [round10Milestone, setRound10Milestone] = useState<'extra_life' | 'bonus_points' | null>(null);
+
+  // Persist session state so switching tabs or refreshing never resets lives
+  useEffect(() => {
+    savePersistedGameSession('peak_master', {
+      roundCount,
+      lives,
+      isGameOver,
+      isVictory,
+      sessionScore
+    });
+  }, [roundCount, lives, isGameOver, isVictory, sessionScore]);
 
   // Settings
   const [includeCuts, setIncludeCuts] = useState<boolean>(false);
@@ -180,20 +212,36 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
     };
 
     setTargetFilter(filter);
-    audioEngine.setTargetFilter(filter);
-    audioEngine.setListeningMode('target');
+    if (isActive) {
+      audioEngine.setTargetFilter(filter);
+      audioEngine.setListeningMode('target');
+    }
 
     setPinnedFreq(null);
     setIsRoundAnswered(false);
     setLastRoundResult(null);
     setLastHitStatus(null);
     setStartTime(Date.now());
-  }, [roundCount, includeCuts, fixedGain, qFactor]);
+  }, [roundCount, includeCuts, fixedGain, qFactor, isActive]);
 
   // Initial load
   useEffect(() => {
-    generateNewRound(1);
+    generateNewRound(roundCount);
   }, []);
+
+  // Re-sync AudioEngine when this tab becomes active
+  useEffect(() => {
+    if (isActive && targetFilter) {
+      audioEngine.setMonoMode(false);
+      audioEngine.setCorrectionMode(false);
+      audioEngine.setStemMode(false);
+      audioEngine.resetDbLevels();
+      audioEngine.setTargetPan(0);
+      audioEngine.setUserPan(0);
+      audioEngine.setTargetFilter(targetFilter);
+      audioEngine.setListeningMode('target');
+    }
+  }, [isActive]);
 
   // Auto-dismiss Round 10 milestone graphic after 3.2 seconds
   useEffect(() => {
