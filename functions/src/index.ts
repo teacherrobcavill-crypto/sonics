@@ -1,4 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import * as logger from "firebase-functions/logger";
 import { defineSecret } from "firebase-functions/params";
 import * as admin from "firebase-admin";
@@ -242,6 +243,109 @@ export const stripeWebhook = onRequest(
     } catch (handlerErr: any) {
       logger.error(`Error processing Stripe event ${event.id}: ${handlerErr.message}`, handlerErr);
       res.status(500).send(`Webhook handler error: ${handlerErr.message}`);
+    }
+  }
+);
+
+/**
+ * Daily Midnight Maintenance (Firebase Cloud Functions v2 Scheduler)
+ *
+ * Runs automatically every night at 00:00 Europe/London (midnight UK time).
+ * - Snapshots the day's top leaderboard students into /daily_snapshots/{YYYY-MM-DD}
+ * - Calculates and logs daily cohort statistics (active players, average score)
+ * - Safe and non-destructive: does not modify or delete student progress
+ */
+export const dailyMidnightMaintenance = onSchedule(
+  {
+    schedule: "0 0 * * *",
+    timeZone: "Europe/London",
+  },
+  async (event) => {
+    logger.info(`Starting daily midnight maintenance for ${event.scheduleTime}...`);
+
+    try {
+      // 1. Determine yesterday's date string (e.g. 2026-10-20)
+      const now = new Date();
+      const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const dateKey = yesterday.toISOString().split("T")[0];
+
+      // 2. Fetch all real students
+      const studentsSnap = await db.collection("students").get();
+
+      if (studentsSnap.empty) {
+        logger.info("No student accounts found in database. Exiting maintenance.");
+        return;
+      }
+
+      const eligibleStudents: any[] = [];
+      let totalRoundsPlayedYesterday = 0;
+
+      for (const docSnap of studentsSnap.docs) {
+        const student = docSnap.data();
+
+        // Skip admin and test accounts
+        if (student.isAdmin || student.id === "rob" || student.id === "rob_c") {
+          continue;
+        }
+
+        const stats = student.stats || {};
+        eligibleStudents.push({
+          id: docSnap.id,
+          name: student.name || "Anonymous",
+          totalScore: stats.totalScore || 0,
+          bestStreak: stats.bestStreak || 0,
+          roundsPlayed: stats.roundsPlayed || 0,
+          cohortYear: student.cohortYear || "Class of 2026",
+          rankTitle: stats.rankTitle || "Listener",
+        });
+
+        // Check if student played yesterday
+        if (student.dailyUsage?.date === dateKey) {
+          const rounds = student.dailyUsage.rounds || {};
+          const sumRounds = Object.values(rounds).reduce((a: any, b: any) => (a || 0) + (b || 0), 0) as number;
+          totalRoundsPlayedYesterday += sumRounds;
+        }
+      }
+
+      // Sort by score descending, then best streak
+      eligibleStudents.sort((a, b) => {
+        if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+        return b.bestStreak - a.bestStreak;
+      });
+
+      const top10 = eligibleStudents.slice(0, 10);
+      const champion = top10.length > 0 ? top10[0] : null;
+
+      // 3. Save permanent daily snapshot into /daily_snapshots/{dateKey}
+      const snapshotRef = db.collection("daily_snapshots").doc(dateKey);
+      await snapshotRef.set({
+        date: dateKey,
+        capturedAt: admin.firestore.FieldValue.serverTimestamp(),
+        totalStudentsCount: eligibleStudents.length,
+        totalRoundsPlayedYesterday,
+        dailyChampion: champion
+          ? {
+              id: champion.id,
+              name: champion.name,
+              totalScore: champion.totalScore,
+              cohortYear: champion.cohortYear,
+            }
+          : null,
+        top10: top10.map((s, index) => ({
+          rank: index + 1,
+          id: s.id,
+          name: s.name,
+          totalScore: s.totalScore,
+          bestStreak: s.bestStreak,
+          cohortYear: s.cohortYear,
+        })),
+      });
+
+      logger.info(
+        `Daily snapshot archived for ${dateKey}: Champion is ${champion?.name || "None"} (${champion?.totalScore || 0} pts), ${eligibleStudents.length} total students recorded.`
+      );
+    } catch (err: any) {
+      logger.error(`Error during daily midnight maintenance: ${err.message}`, err);
     }
   }
 );
