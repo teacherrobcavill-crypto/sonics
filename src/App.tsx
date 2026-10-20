@@ -99,6 +99,14 @@ export const App: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<AppTab>('peak_master');
   const [showStats, setShowStats] = useState(false);
+
+  const handleSwitchTab = (tab: AppTab) => {
+    if (tab !== activeTab) {
+      audioEngine.stop();
+    }
+    setActiveTab(tab);
+    setShowStats(false);
+  };
   const [latestResult, setLatestResult] = useState<RoundResult | null>(null);
   const [, setGuestUsageTick] = useState(0);
 
@@ -541,7 +549,7 @@ export const App: React.FC = () => {
           <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none">
             
             <button
-              onClick={() => { setActiveTab('peak_master'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('peak_master')}
               className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === 'peak_master' && !showStats
                   ? 'bg-studio-accent text-studio-950 font-bold shadow-lg shadow-studio-accent/20'
@@ -553,7 +561,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('filter_doctor'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('filter_doctor')}
               className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === 'filter_doctor' && !showStats
                   ? 'bg-studio-neonOrange text-studio-950 font-bold shadow-lg shadow-studio-neonOrange/20'
@@ -565,7 +573,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('pan_master'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('pan_master')}
               className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === 'pan_master' && !showStats
                   ? 'bg-studio-neonBlue text-studio-950 font-bold shadow-lg shadow-studio-neonBlue/20'
@@ -577,7 +585,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('db_master'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('db_master')}
               className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === 'db_master' && !showStats
                   ? 'bg-studio-accent text-studio-950 font-bold shadow-lg shadow-studio-accent/20'
@@ -589,7 +597,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('tye_match'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('tye_match')}
               className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === 'tye_match' && !showStats
                   ? 'bg-studio-neonGreen text-studio-950 font-bold shadow-lg shadow-studio-neonGreen/20'
@@ -601,7 +609,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('sandbox'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('sandbox')}
               className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === 'sandbox' && !showStats
                   ? 'bg-slate-200 text-studio-950 font-bold shadow'
@@ -614,7 +622,7 @@ export const App: React.FC = () => {
 
             {/* Compressor Lab Tab */}
             <button
-              onClick={() => { setActiveTab('compressor_lab'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('compressor_lab')}
               className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === 'compressor_lab' && !showStats
                   ? 'bg-amber-500 text-studio-950 font-bold shadow-lg shadow-amber-500/20'
@@ -627,7 +635,7 @@ export const App: React.FC = () => {
 
             {/* Leaderboard Tab */}
             <button
-              onClick={() => { setActiveTab('leaderboard'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('leaderboard')}
               className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 activeTab === 'leaderboard' && !showStats
                   ? 'bg-amber-400 text-studio-950 font-bold shadow-lg shadow-amber-400/20'
@@ -671,7 +679,7 @@ export const App: React.FC = () => {
               />
             )}
 
-            {activeTab === 'peak_master' && (
+            <div className={activeTab === 'peak_master' ? 'contents' : 'hidden'}>
               <PeakMasterGame
                 onRoundComplete={handleRoundComplete}
                 onBonusPoints={handleBonusPoints}
@@ -679,31 +687,31 @@ export const App: React.FC = () => {
                 totalScore={stats.totalScore}
                 remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'peak_master').remaining}
                 isCustomAudio={isCustomAudio}
-                onNavigateToSandbox={() => { setActiveTab('sandbox'); setShowStats(false); }}
-                onOpenLeaderboard={() => { setActiveTab('leaderboard'); setShowStats(false); }}
-                onNavigateToMode={(mode) => { setActiveTab(mode); setShowStats(false); }}
+                onNavigateToSandbox={() => handleSwitchTab('sandbox')}
+                onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
+                onNavigateToMode={(mode) => handleSwitchTab(mode)}
                 isMobile={isMobile}
                 isPracticeMode={Boolean(practiceModes['peak_master'])}
                 onTogglePracticeMode={(enabled) => handleTogglePracticeMode('peak_master', enabled)}
               />
-            )}
+            </div>
 
-            {activeTab === 'filter_doctor' && (
+            <div className={activeTab === 'filter_doctor' ? 'contents' : 'hidden'}>
               <FilterDoctorGame
                 onRoundComplete={handleRoundComplete}
                 currentStreak={stats.currentStreak}
                 totalScore={stats.totalScore}
                 remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'filter_doctor').remaining}
                 isCustomAudio={isCustomAudio}
-                onNavigateToSandbox={() => { setActiveTab('sandbox'); setShowStats(false); }}
-                onOpenLeaderboard={() => { setActiveTab('leaderboard'); setShowStats(false); }}
+                onNavigateToSandbox={() => handleSwitchTab('sandbox')}
+                onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
                 isMobile={isMobile}
                 isPracticeMode={Boolean(practiceModes['filter_doctor'])}
                 onTogglePracticeMode={(enabled) => handleTogglePracticeMode('filter_doctor', enabled)}
               />
-            )}
+            </div>
 
-            {activeTab === 'pan_master' && (
+            <div className={activeTab === 'pan_master' ? 'contents' : 'hidden'}>
               <PanMasterGame
                 onRoundComplete={handleRoundComplete}
                 onBonusPoints={handleBonusPoints}
@@ -711,16 +719,16 @@ export const App: React.FC = () => {
                 totalScore={stats.totalScore}
                 remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'pan_master').remaining}
                 isCustomAudio={isCustomAudio}
-                onNavigateToSandbox={() => { setActiveTab('sandbox'); setShowStats(false); }}
-                onOpenLeaderboard={() => { setActiveTab('leaderboard'); setShowStats(false); }}
-                onNavigateToMode={(mode) => { setActiveTab(mode); setShowStats(false); }}
+                onNavigateToSandbox={() => handleSwitchTab('sandbox')}
+                onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
+                onNavigateToMode={(mode) => handleSwitchTab(mode)}
                 isMobile={isMobile}
                 isPracticeMode={Boolean(practiceModes['pan_master'])}
                 onTogglePracticeMode={(enabled) => handleTogglePracticeMode('pan_master', enabled)}
               />
-            )}
+            </div>
 
-            {activeTab === 'db_master' && (
+            <div className={activeTab === 'db_master' ? 'contents' : 'hidden'}>
               <DbMasterGame
                 onRoundComplete={handleRoundComplete}
                 onBonusPoints={handleBonusPoints}
@@ -728,29 +736,29 @@ export const App: React.FC = () => {
                 totalScore={stats.totalScore}
                 remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'db_master').remaining}
                 isCustomAudio={isCustomAudio}
-                onNavigateToSandbox={() => { setActiveTab('sandbox'); setShowStats(false); }}
-                onOpenLeaderboard={() => { setActiveTab('leaderboard'); setShowStats(false); }}
-                onNavigateToMode={(mode) => { setActiveTab(mode); setShowStats(false); }}
+                onNavigateToSandbox={() => handleSwitchTab('sandbox')}
+                onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
+                onNavigateToMode={(mode) => handleSwitchTab(mode)}
                 isMobile={isMobile}
                 isPracticeMode={Boolean(practiceModes['db_master'])}
                 onTogglePracticeMode={(enabled) => handleTogglePracticeMode('db_master', enabled)}
               />
-            )}
+            </div>
 
-            {activeTab === 'tye_match' && (
+            <div className={activeTab === 'tye_match' ? 'contents' : 'hidden'}>
               <EQMatchGame
                 onRoundComplete={handleRoundComplete}
                 currentStreak={stats.currentStreak}
                 totalScore={stats.totalScore}
                 remainingDailyRounds={getRemainingDailyRounds(currentStudent, 'tye_match').remaining}
                 isCustomAudio={isCustomAudio}
-                onNavigateToSandbox={() => { setActiveTab('sandbox'); setShowStats(false); }}
-                onOpenLeaderboard={() => { setActiveTab('leaderboard'); setShowStats(false); }}
+                onNavigateToSandbox={() => handleSwitchTab('sandbox')}
+                onOpenLeaderboard={() => handleSwitchTab('leaderboard')}
                 isMobile={isMobile}
                 isPracticeMode={Boolean(practiceModes['tye_match'])}
                 onTogglePracticeMode={(enabled) => handleTogglePracticeMode('tye_match', enabled)}
               />
-            )}
+            </div>
 
             {activeTab === 'sandbox' && (
               <SandboxEQ isMobile={isMobile} />
@@ -845,7 +853,7 @@ export const App: React.FC = () => {
         <nav className="fixed bottom-0 left-0 right-0 z-40 bg-studio-950/95 backdrop-blur-lg border-t border-studio-800/90 shadow-2xl">
           <div className="max-w-md mx-auto px-1 py-1.5 grid grid-cols-8 gap-0.5 text-[10px] font-mono">
             <button
-              onClick={() => { setActiveTab('peak_master'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('peak_master')}
               className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'peak_master' && !showStats
                   ? 'bg-studio-accent/15 text-studio-accent font-bold border border-studio-accent/30'
@@ -857,7 +865,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('filter_doctor'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('filter_doctor')}
               className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'filter_doctor' && !showStats
                   ? 'bg-studio-neonOrange/15 text-studio-neonOrange font-bold border border-studio-neonOrange/30'
@@ -869,7 +877,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('pan_master'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('pan_master')}
               className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'pan_master' && !showStats
                   ? 'bg-studio-neonBlue/15 text-studio-neonBlue font-bold border border-studio-neonBlue/30'
@@ -881,7 +889,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('db_master'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('db_master')}
               className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'db_master' && !showStats
                   ? 'bg-studio-accent/15 text-studio-accent font-bold border border-studio-accent/30'
@@ -893,7 +901,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('tye_match'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('tye_match')}
               className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'tye_match' && !showStats
                   ? 'bg-studio-neonGreen/15 text-studio-neonGreen font-bold border border-studio-neonGreen/30'
@@ -905,7 +913,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('sandbox'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('sandbox')}
               className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'sandbox' && !showStats
                   ? 'bg-white/10 text-white font-bold border border-white/20'
@@ -917,7 +925,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('compressor_lab'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('compressor_lab')}
               className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'compressor_lab' && !showStats
                   ? 'bg-amber-500/15 text-amber-400 font-bold border border-amber-500/30'
@@ -929,7 +937,7 @@ export const App: React.FC = () => {
             </button>
 
             <button
-              onClick={() => { setActiveTab('leaderboard'); setShowStats(false); }}
+              onClick={() => handleSwitchTab('leaderboard')}
               className={`flex flex-col items-center justify-center py-1.5 px-0.5 rounded-xl transition-all cursor-pointer ${
                 activeTab === 'leaderboard' && !showStats
                   ? 'bg-amber-400/15 text-amber-400 font-bold border border-amber-400/30'
