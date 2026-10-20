@@ -1226,9 +1226,20 @@ export class AudioEngine {
     try {
       const stems: Partial<Record<StemType, AudioBuffer>> = {};
       const promises = STEM_TYPES.map(async (stem) => {
-        const url = `${import.meta.env.BASE_URL}audio/stems/htdemucs/${folder}/${stem}.mp3`;
-        const resp = await fetch(url);
-        if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching ${url}`);
+        const r2Url = `${R2_AUDIO_BASE_URL}stems/htdemucs/${folder}/${stem}.mp3`;
+        const localUrl = `${import.meta.env.BASE_URL}audio/stems/htdemucs/${folder}/${stem}.mp3`;
+
+        let resp: Response;
+        try {
+          resp = await fetch(r2Url);
+          if (!resp.ok) {
+            resp = await fetch(localUrl);
+          }
+        } catch {
+          resp = await fetch(localUrl);
+        }
+
+        if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching stem ${folder}/${stem}`);
         const arrayBuf = await resp.arrayBuffer();
         const audioBuf = await this.ctx!.decodeAudioData(arrayBuf);
         stems[stem] = audioBuf;
