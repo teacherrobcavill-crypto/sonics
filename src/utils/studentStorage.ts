@@ -44,6 +44,7 @@ export interface StudentProfile {
   defaultTrack?: AudioSourceType; // Student's unique default reference track
   theme?: AppTheme; // Student's custom UI studio visual theme
   email?: string; // Student's email for mailing list and daily updates
+  isAdmin?: boolean; // Admin access (e.g. unlocks Compressor Lab preview, hidden from leaderboard)
 }
 
 export type AppTheme = 'cyber' | 'warm_console' | 'slate_minimal' | 'midnight_tape' | 'synthwave';
@@ -274,6 +275,37 @@ export function signInStudent(
   }
   if (!password.trim()) {
     return { success: false, error: 'Please enter your password.' };
+  }
+
+  // Built-in Admin Account check (Username: Rob, Password: Bramley1)
+  if (trimmedName.toLowerCase() === 'rob' && password === 'Bramley1') {
+    const adminProfile: StudentProfile = {
+      id: 'rob',
+      name: 'Rob',
+      password: 'Bramley1',
+      avatarColor: 'from-amber-400 to-rose-500',
+      createdAt: Date.now(),
+      isAdmin: true,
+      stats: {
+        totalScore: 0,
+        roundsPlayed: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        averageAccuracyOctaves: 0,
+        rankTitle: 'Audio Master'
+      },
+      history: [],
+      dailyUsage: {
+        date: getTodayDateString(),
+        rounds: { peak_master: 0, filter_doctor: 0, tye_match: 0, pan_master: 0, db_master: 0 }
+      },
+      cohortYear: 'Faculty',
+      defaultTrack: 'dance_pop',
+      theme: 'cyber',
+      email: 'rob@sonics.local'
+    };
+    saveStudentProfile(adminProfile);
+    return { success: true, profile: adminProfile };
   }
 
   const profiles = getStoredProfiles();
@@ -708,7 +740,9 @@ export function getLeaderboard(scope: LeaderboardScope = 'all'): LeaderboardEntr
   const profiles = getStoredProfiles();
   const activeId = getActiveStudentId();
 
-  const entries: LeaderboardEntry[] = Object.values(profiles).map(p => {
+  const entries: LeaderboardEntry[] = Object.values(profiles)
+    .filter(p => !p.isAdmin && p.id !== 'rob' && p.id !== 'rob_c')
+    .map(p => {
     const userStats = scope === 'all' ? p.stats : getStudentModeStats(p, scope as GameMode);
     return {
       rank: 0,
@@ -737,7 +771,7 @@ export function getLeaderboard(scope: LeaderboardScope = 'all'): LeaderboardEntr
 export function exportMailingListCSV(entries: LeaderboardEntry[]): void {
   const headers = ['Name', 'Email Address', 'Cohort Year', 'Rank Title', 'Total Score', 'Rounds Played', 'Best Streak'];
   const validRows = entries
-    .filter(e => e.id !== GLYN_JOHNS_ID)
+    .filter(e => e.id !== GLYN_JOHNS_ID && e.id !== 'rob' && e.id !== 'rob_c' && (e.name || '').toLowerCase() !== 'rob')
     .map(e => [
       `"${(e.name || '').replace(/"/g, '""')}"`,
       `"${(e.email || '').replace(/"/g, '""')}"`,

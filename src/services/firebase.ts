@@ -107,6 +107,36 @@ export async function cloudLoginOrRegisterStudent(
     return { success: false, error: 'Please enter your password.' };
   }
 
+  // Built-in Admin Account check (Username: Rob, Password: Bramley1)
+  if (trimmedName.toLowerCase() === 'rob' && password === 'Bramley1') {
+    const adminProfile: StudentProfile = {
+      id: 'rob',
+      name: 'Rob',
+      password: 'Bramley1',
+      avatarColor: 'from-amber-400 to-rose-500',
+      createdAt: Date.now(),
+      isAdmin: true,
+      stats: {
+        totalScore: 0,
+        roundsPlayed: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        averageAccuracyOctaves: 0,
+        rankTitle: 'Audio Master'
+      },
+      history: [],
+      dailyUsage: {
+        date: getTodayDateString(),
+        rounds: { peak_master: 0, filter_doctor: 0, tye_match: 0, pan_master: 0, db_master: 0 }
+      },
+      cohortYear: 'Faculty',
+      defaultTrack: defaultTrack || 'dance_pop',
+      theme: theme || 'cyber',
+      email: 'rob@sonics.local'
+    };
+    return { success: true, profile: adminProfile, isNewAccount: false };
+  }
+
   const firestore = getFirebaseDb();
   if (!firestore) {
     return { success: false, error: 'Firebase is not yet configured with an active API Key.' };
@@ -453,6 +483,35 @@ export async function cloudPurgePreLaunchData(): Promise<{ deletedStudents: numb
  * Fetch a single student's profile from Firestore by their studentId
  */
 export async function cloudGetStudentProfile(studentId: string): Promise<StudentProfile | null> {
+  if (studentId === 'rob' || studentId === 'rob_c') {
+    const adminProfile: StudentProfile = {
+      id: 'rob',
+      name: 'Rob',
+      password: 'Bramley1',
+      avatarColor: 'from-amber-400 to-rose-500',
+      createdAt: Date.now(),
+      isAdmin: true,
+      stats: {
+        totalScore: 0,
+        roundsPlayed: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        averageAccuracyOctaves: 0,
+        rankTitle: 'Audio Master'
+      },
+      history: [],
+      dailyUsage: {
+        date: getTodayDateString(),
+        rounds: { peak_master: 0, filter_doctor: 0, tye_match: 0, pan_master: 0, db_master: 0 }
+      },
+      cohortYear: 'Faculty',
+      defaultTrack: 'dance_pop',
+      theme: 'cyber',
+      email: 'rob@sonics.local'
+    };
+    return adminProfile;
+  }
+
   const firestore = getFirebaseDb();
   if (!firestore) return null;
 
@@ -533,7 +592,10 @@ export async function cloudFetchLeaderboard(
     const entries: LeaderboardEntry[] = [];
     for (const docSnap of docsList) {
       const p = docSnap.data() as StudentProfile & { cohortYear?: string };
-      // Safety: skip test accounts created before launch
+      // Safety: skip test accounts created before launch and admin accounts
+      if (p.isAdmin || p.id === 'rob' || p.id === 'rob_c') {
+        continue;
+      }
       if (p.createdAt && p.createdAt < PRE_LAUNCH_WIPE_TIMESTAMP) {
         continue;
       }
@@ -579,6 +641,9 @@ export async function cloudFetchLeaderboard(
 
       for (const docSnap of scoresSnapshot.docs) {
         const data = docSnap.data();
+        if (data.studentId === 'rob' || data.studentId === 'rob_c' || (data.nickname && data.nickname.toLowerCase() === 'rob')) {
+          continue;
+        }
         if (data.timestamp && data.timestamp < PRE_LAUNCH_WIPE_TIMESTAMP) {
           continue;
         }
