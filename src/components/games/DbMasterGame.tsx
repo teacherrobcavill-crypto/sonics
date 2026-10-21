@@ -33,7 +33,9 @@ import { audioEngine, ListeningMode } from '../../audio/AudioEngine';
 import { StemBalanceConsole } from './StemBalanceConsole';
 import {
   getPersistedGameSession,
-  savePersistedGameSession
+  savePersistedGameSession,
+  getActiveStudentId,
+  markStudentGameOver
 } from '../../utils/studentStorage';
 
 interface DbMasterGameProps {
@@ -253,6 +255,10 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
       }
       if (nextLives <= 0) {
         setIsGameOver(true);
+        const activeId = getActiveStudentId();
+        if (activeId) {
+          markStudentGameOver(activeId, 'db_master');
+        }
       }
     }
 
@@ -502,8 +508,12 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
     const snapped = Math.round(rawDb * 10) / 10;
     const clamped = Math.max(MIN_DB, Math.min(MAX_DB, snapped));
     setUserFaderDb(clamped);
+    if (listeningMode !== 'user') {
+      audioEngine.setListeningMode('user');
+      setListeningMode('user');
+    }
     audioEngine.setUserDbLevel(clamped, 0, targetDelta);
-  }, [targetDelta]);
+  }, [targetDelta, listeningMode]);
 
   // Pointer drag handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -530,20 +540,28 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
   // Nudge fader by delta
   const nudgeFader = useCallback((delta: number) => {
     if (isRoundAnswered || isGameOver || isDailyLocked) return;
+    if (listeningMode !== 'user') {
+      audioEngine.setListeningMode('user');
+      setListeningMode('user');
+    }
     setUserFaderDb(prev => {
       const next = Math.max(MIN_DB, Math.min(MAX_DB, Math.round((prev + delta) * 10) / 10));
       audioEngine.setUserDbLevel(next, 0, targetDelta);
       return next;
     });
-  }, [isRoundAnswered, isGameOver, isDailyLocked, targetDelta]);
+  }, [isRoundAnswered, isGameOver, isDailyLocked, targetDelta, listeningMode]);
 
   // Set explicit fader value
   const setFaderDirect = useCallback((value: number) => {
     if (isRoundAnswered || isGameOver || isDailyLocked) return;
+    if (listeningMode !== 'user') {
+      audioEngine.setListeningMode('user');
+      setListeningMode('user');
+    }
     const next = Math.max(MIN_DB, Math.min(MAX_DB, Math.round(value * 10) / 10));
     setUserFaderDb(next);
     audioEngine.setUserDbLevel(next, 0, targetDelta);
-  }, [isRoundAnswered, isGameOver, isDailyLocked, targetDelta]);
+  }, [isRoundAnswered, isGameOver, isDailyLocked, targetDelta, listeningMode]);
 
   // Handle guess submission / lock-in
   const handleLockInGuess = useCallback(() => {
@@ -589,6 +607,10 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
       }
       if (finalLives <= 0) {
         setIsGameOver(true);
+        const activeId = getActiveStudentId();
+        if (activeId) {
+          markStudentGameOver(activeId, 'db_master');
+        }
       }
     }
 
@@ -1701,11 +1723,16 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
             <div className="flex items-center justify-center gap-3 pt-2">
               <button
                 type="button"
-                onClick={handleRestartSession}
-                className="flex items-center space-x-2 px-6 py-3 bg-studio-accent text-studio-950 font-bold font-mono text-xs uppercase tracking-wider rounded-xl hover:brightness-110 shadow-lg shadow-studio-accent/25 active:scale-95 cursor-pointer"
+                onClick={() => {
+                  onTogglePracticeMode?.(true);
+                  setIsGameOver(false);
+                  setRoundCount(prev => prev + 1);
+                  generateNewRound(roundCount + 1);
+                }}
+                className="flex items-center space-x-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white font-bold font-mono text-xs uppercase tracking-wider rounded-xl transition-all shadow-lg shadow-purple-600/25 active:scale-95 cursor-pointer"
               >
-                <RotateCcw className="w-4 h-4" />
-                <span>Try Again</span>
+                <Headphones className="w-4 h-4" />
+                <span>Practice Mode (0 PTS)</span>
               </button>
 
               {onOpenLeaderboard && (

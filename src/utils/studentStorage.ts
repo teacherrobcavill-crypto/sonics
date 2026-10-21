@@ -28,6 +28,7 @@ export interface DailyUsage {
     db_master?: number;
     shelving_scout?: number;
   };
+  gameOver?: Partial<Record<GameMode, boolean>>;
 }
 
 export interface StudentProfile {
@@ -658,6 +659,15 @@ export function recordStudentRound(
     profile.dailyUsage.rounds = { peak_master: 0, filter_doctor: 0, tye_match: 0, pan_master: 0, db_master: 0 };
   }
 
+  // Check if mode is already game over or capped for today
+  if (mode !== 'sandbox') {
+    const isGameOverToday = profile.dailyUsage.gameOver?.[mode];
+    const prevRounds = profile.dailyUsage.rounds[mode as keyof DailyUsage['rounds']] || 0;
+    if (isGameOverToday || prevRounds >= DAILY_ROUND_LIMIT) {
+      result.score = 0;
+    }
+  }
+
   // Increment usage if not sandbox
   if (mode !== 'sandbox') {
     const key = mode as keyof DailyUsage['rounds'];
@@ -714,6 +724,25 @@ export function recordStudentRound(
   const remaining = mode === 'sandbox' ? 999 : Math.max(0, DAILY_ROUND_LIMIT - usedRounds);
 
   return { updatedProfile: profile, remainingDaily: remaining };
+}
+
+export function markStudentGameOver(studentId: string, mode: GameMode): void {
+  const profiles = getStoredProfiles();
+  const profile = profiles[studentId];
+  if (!profile) return;
+  const today = getTodayDateString();
+  if (!profile.dailyUsage || profile.dailyUsage.date !== today) {
+    profile.dailyUsage = {
+      date: today,
+      rounds: { peak_master: 0, filter_doctor: 0, tye_match: 0, pan_master: 0, db_master: 0 }
+    };
+  }
+  if (!profile.dailyUsage.gameOver) {
+    profile.dailyUsage.gameOver = {};
+  }
+  profile.dailyUsage.gameOver[mode] = true;
+  profiles[studentId] = profile;
+  saveStoredProfiles(profiles);
 }
 
 export function addStudentBonusPoints(

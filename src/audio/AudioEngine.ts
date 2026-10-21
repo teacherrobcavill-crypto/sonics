@@ -784,7 +784,12 @@ export class AudioEngine {
 
     if (this.ctx && this.userGain && this.activeListeningMode === 'user') {
       const t = this.ctx.currentTime;
-      this.userGain.gain.setTargetAtTime(this.userLevel, t, 0.02);
+      try {
+        this.userGain.gain.cancelScheduledValues(t);
+        this.userGain.gain.setTargetAtTime(this.userLevel, t, 0.02);
+      } catch {
+        this.userGain.gain.value = this.userLevel;
+      }
     }
   }
 
@@ -1334,13 +1339,34 @@ export class AudioEngine {
       src.loopEnd = duration;
 
       const targetGain = this.stemTargetGainNodes[stem];
-      if (targetGain) src.connect(targetGain);
+      if (targetGain) {
+        const linearTgt = Math.pow(10, (this.targetStemBalance[stem] ?? 0) / 20);
+        try {
+          targetGain.gain.cancelScheduledValues(startTime);
+          targetGain.gain.setValueAtTime(linearTgt, startTime);
+        } catch {
+          targetGain.gain.value = linearTgt;
+        }
+        src.connect(targetGain);
+      }
 
       const userGain = this.stemUserGainNodes[stem];
-      if (userGain) src.connect(userGain);
+      if (userGain) {
+        const linearUser = Math.pow(10, (this.userStemBalance[stem] ?? 0) / 20);
+        try {
+          userGain.gain.cancelScheduledValues(startTime);
+          userGain.gain.setValueAtTime(linearUser, startTime);
+        } catch {
+          userGain.gain.value = linearUser;
+        }
+        src.connect(userGain);
+      }
 
       const bypassGain = this.stemBypassGainNodes[stem];
-      if (bypassGain) src.connect(bypassGain);
+      if (bypassGain) {
+        bypassGain.gain.setValueAtTime(1.0, startTime);
+        src.connect(bypassGain);
+      }
 
       const analyser = this.stemAnalysers[stem];
       if (analyser) src.connect(analyser);
@@ -1424,7 +1450,15 @@ export class AudioEngine {
     for (const stem of STEM_TYPES) {
       const db = balance[stem] ?? 0;
       const linear = Math.pow(10, db / 20);
-      this.stemTargetGainNodes[stem]?.gain.setTargetAtTime(linear, t, 0.015);
+      const node = this.stemTargetGainNodes[stem];
+      if (node) {
+        try {
+          node.gain.cancelScheduledValues(t);
+          node.gain.setTargetAtTime(linear, t, 0.015);
+        } catch {
+          node.gain.value = linear;
+        }
+      }
     }
   }
 
@@ -1432,7 +1466,15 @@ export class AudioEngine {
     this.userStemBalance[stem] = db;
     if (!this.ctx) return;
     const linear = Math.pow(10, db / 20);
-    this.stemUserGainNodes[stem]?.gain.setTargetAtTime(linear, this.ctx.currentTime, 0.015);
+    const node = this.stemUserGainNodes[stem];
+    if (node) {
+      try {
+        node.gain.cancelScheduledValues(this.ctx.currentTime);
+        node.gain.setTargetAtTime(linear, this.ctx.currentTime, 0.015);
+      } catch {
+        node.gain.value = linear;
+      }
+    }
   }
 
   public setStemSoloMute(stem: StemType, isMuted: boolean, isSoloed: boolean): void {
@@ -1458,7 +1500,15 @@ export class AudioEngine {
     if (this.ctx) {
       const t = this.ctx.currentTime;
       for (const stem of STEM_TYPES) {
-        this.stemUserGainNodes[stem]?.gain.setTargetAtTime(1.0, t, 0.015);
+        const node = this.stemUserGainNodes[stem];
+        if (node) {
+          try {
+            node.gain.cancelScheduledValues(t);
+            node.gain.setTargetAtTime(1.0, t, 0.015);
+          } catch {
+            node.gain.value = 1.0;
+          }
+        }
       }
     }
   }

@@ -33,7 +33,9 @@ import {
 } from '../../utils/frequencies';
 import {
   getPersistedGameSession,
-  savePersistedGameSession
+  savePersistedGameSession,
+  getActiveStudentId,
+  markStudentGameOver
 } from '../../utils/studentStorage';
 
 interface PeakMasterGameProps {
@@ -353,6 +355,10 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
       setLives(remainingLives);
       if (remainingLives <= 0) {
         setIsGameOver(true);
+        const activeId = getActiveStudentId();
+        if (activeId) {
+          markStudentGameOver(activeId, 'peak_master');
+        }
       }
     }
 
@@ -784,16 +790,19 @@ export const PeakMasterGame: React.FC<PeakMasterGameProps> = ({
               </div>
             </div>
 
-            {/* If custom audio, allow instant replay */}
-            {isCustomAudio && (
-              <button
-                onClick={handleRestartSession}
-                className="flex items-center space-x-1.5 px-4 py-2 bg-studio-accent text-studio-950 font-bold font-mono text-xs rounded-xl hover:brightness-110 cursor-pointer"
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>Retry (Custom Audio)</span>
-              </button>
-            )}
+            {/* Continue in Practice Mode (Zero Points) */}
+            <button
+              onClick={() => {
+                onTogglePracticeMode?.(true);
+                setIsGameOver(false);
+                setRoundCount(prev => prev + 1);
+                generateNewRound();
+              }}
+              className="flex items-center space-x-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold font-mono text-xs uppercase tracking-wider rounded-xl transition-all cursor-pointer shadow-lg shadow-purple-600/25"
+            >
+              <Headphones className="w-4 h-4" />
+              <span>Practice Mode (0 PTS)</span>
+            </button>
           </div>
 
           <div className="border-t border-red-900/60 pt-4">

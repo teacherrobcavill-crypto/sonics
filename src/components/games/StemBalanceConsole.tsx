@@ -210,6 +210,7 @@ export const StemBalanceConsole: React.FC<StemBalanceConsoleProps> = ({
   const initRound = useCallback(async () => {
     setIsLoadingStems(true);
     await audioEngine.setStemMode(true);
+    await audioEngine.setAudioSource(currentSourceType);
     await audioEngine.loadStemBuffersForTrack(currentSourceType);
 
     const { targetBalance: newTarget, activeStems: newActive, anchorStem: newAnchor } = generateStemRoundTargets(roundCount);
@@ -289,11 +290,19 @@ export const StemBalanceConsole: React.FC<StemBalanceConsoleProps> = ({
     const newDb = calculateDbFromY(e.clientY);
     setUserFaders(prev => ({ ...prev, [stem]: newDb }));
     audioEngine.setUserStemGain(stem, newDb);
+    if (listeningMode !== 'user') {
+      audioEngine.setListeningMode('user');
+      setListeningMode('user');
+    }
 
     const onPointerMove = (moveEvt: PointerEvent) => {
       const db = calculateDbFromY(moveEvt.clientY);
       setUserFaders(prev => ({ ...prev, [stem]: db }));
       audioEngine.setUserStemGain(stem, db);
+      if (listeningMode !== 'user') {
+        audioEngine.setListeningMode('user');
+        setListeningMode('user');
+      }
     };
 
     const onPointerUp = (upEvt: PointerEvent) => {
@@ -315,6 +324,10 @@ export const StemBalanceConsole: React.FC<StemBalanceConsoleProps> = ({
     const nextDb = Math.max(FADER_MIN_DB, Math.min(FADER_MAX_DB, Math.round((current + delta) * 10) / 10));
     setUserFaders(prev => ({ ...prev, [stem]: nextDb }));
     audioEngine.setUserStemGain(stem, nextDb);
+    if (listeningMode !== 'user') {
+      audioEngine.setListeningMode('user');
+      setListeningMode('user');
+    }
   };
 
   // Reset all faders to 0.0 dB (Flat)
