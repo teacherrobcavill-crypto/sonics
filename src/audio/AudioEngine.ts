@@ -634,6 +634,8 @@ export class AudioEngine {
     this.currentSourceNode.loop = true;
 
     if (this.sourceOutGain) {
+      // Ensure single-track source output is active when not in stem mode
+      this.sourceOutGain.gain.setTargetAtTime(1.0, this.ctx.currentTime, 0.015);
       this.currentSourceNode.connect(this.sourceOutGain);
     }
 
@@ -648,31 +650,31 @@ export class AudioEngine {
   }
 
   public pause(): void {
+    // Always stop and disconnect any single-track source node if present
+    if (this.currentSourceNode) {
+      if (this.ctx && !this.isStemMode) {
+        this.pauseOffset = this.ctx.currentTime - this.startTime;
+      }
+      try {
+        this.currentSourceNode.stop();
+        this.currentSourceNode.disconnect();
+      } catch {
+        // ignore
+      }
+      this.currentSourceNode = null;
+    }
+
     if (this.isStemMode) {
       this.pauseStemPlayback();
       return;
     }
 
-    if (!this.ctx || !this.isPlaying || !this.currentSourceNode) return;
-
-    this.pauseOffset = this.ctx.currentTime - this.startTime;
-    try {
-      this.currentSourceNode.stop();
-      this.currentSourceNode.disconnect();
-    } catch {
-      // ignore
-    }
-    this.currentSourceNode = null;
     this.isPlaying = false;
     this.notifyState();
   }
 
   public stop(): void {
-    if (this.isStemMode) {
-      this.stopStemPlayback();
-      return;
-    }
-
+    // Always stop and disconnect both single-track and stem source nodes to prevent zombie audio
     if (this.currentSourceNode) {
       try {
         this.currentSourceNode.stop();
@@ -682,6 +684,11 @@ export class AudioEngine {
       }
       this.currentSourceNode = null;
     }
+
+    if (this.isStemMode || Object.keys(this.stemSourceNodes).length > 0) {
+      this.stopStemPlayback();
+    }
+
     this.isPlaying = false;
     this.pauseOffset = 0;
     this.notifyState();
@@ -1265,11 +1272,26 @@ export class AudioEngine {
    * Toggles stem multi-track mixing mode on or off
    */
   public async setStemMode(enabled: boolean): Promise<void> {
-    if (this.isStemMode === enabled) return;
-
-    if (this.isPlaying) {
-      this.pause();
+    if (this.isStemMode === enabled) {
+      // Even if already in the desired mode, ensure single-track is muted/stopped when in stem mode
+      if (enabled && this.currentSourceNode) {
+        try {
+          this.currentSourceNode.stop();
+          this.currentSourceNode.disconnect();
+        } catch {}
+        this.currentSourceNode = null;
+      }
+      if (enabled && this.ctx && this.sourceOutGain) {
+        this.sourceOutGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.015);
+      }
+      return;
     }
+
+    // Stop any active playback before switching routing
+    if (this.isPlaying || this.currentSourceNode || Object.keys(this.stemSourceNodes).length > 0) {
+      this.stop();
+    }
+
     this.isStemMode = enabled;
     this.pauseOffset = 0;
 
@@ -1283,7 +1305,13 @@ export class AudioEngine {
         this.stemTargetMixBus?.gain.setTargetAtTime(0, t, 0.015);
         this.stemUserMixBus?.gain.setTargetAtTime(0, t, 0.015);
         this.stemBypassMixBus?.gain.setTargetAtTime(0, t, 0.015);
+        this.sourceOutGain?.gain.setTargetAtTime(1.0, t, 0.015);
       } else {
+        // Mute single-track output chain completely while in stem mode
+        this.sourceOutGain?.gain.setTargetAtTime(0, t, 0.015);
+        this.bypassGain?.gain.setTargetAtTime(0, t, 0.015);
+        this.targetGain?.gain.setTargetAtTime(0, t, 0.015);
+        this.userGain?.gain.setTargetAtTime(0, t, 0.015);
         this.updateListeningModeForStem();
       }
     }
@@ -1313,6 +1341,18 @@ export class AudioEngine {
     if (!stems) {
       console.warn("Stems unavailable for track:", this.currentSourceType);
       return;
+    }
+
+    // Guarantee any single-track source node is stopped and muted before starting stems
+    if (this.currentSourceNode) {
+      try {
+        this.currentSourceNode.stop();
+        this.currentSourceNode.disconnect();
+      } catch {}
+      this.currentSourceNode = null;
+    }
+    if (this.sourceOutGain) {
+      this.sourceOutGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.015);
     }
 
     // Stop and disconnect any existing stem source nodes
@@ -1416,6 +1456,12 @@ export class AudioEngine {
     const isTarget = mode === 'target';
     const isUser = mode === 'user';
     const isBypass = mode === 'bypass';
+
+    // Ensure single-track path is completely silent while stem mode is active
+    this.sourceOutGain?.gain.setTargetAtTime(0.0, t, 0.015);
+    this.bypassGain?.gain.setTargetAtTime(0.0, t, 0.015);
+    this.targetGain?.gain.setTargetAtTime(0.0, t, 0.015);
+    this.userGain?.gain.setTargetAtTime(0.0, t, 0.015);
 
     this.stemTargetMixBus.gain.setTargetAtTime(isTarget ? 1.0 : 0.0, t, 0.02);
     this.stemUserMixBus.gain.setTargetAtTime(isUser ? 1.0 : 0.0, t, 0.02);
