@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Trophy,
   Award,
@@ -26,7 +26,7 @@ import {
   formatYearLabel,
   exportMailingListCSV
 } from '../utils/studentStorage';
-import { cloudFetchLeaderboard, isFirebaseReady } from '../services/firebase';
+import { cloudFetchStudentProfiles, buildLeaderboardFromProfiles, isFirebaseReady } from '../services/firebase';
 import { mergeGlynJohnsIntoLeaderboard } from '../utils/glynJohns';
 import { RankLadderModal } from './RankLadderModal';
 import { GameMode } from '../types';
@@ -128,66 +128,56 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   const [isLadderOpen, setIsLadderOpen] = useState(false);
   const [selectedGame, setSelectedGame] = useState<LeaderboardScope>('all');
   const [selectedCohort, setSelectedCohort] = useState<string>('all');
-  const [cloudEntries, setCloudEntries] = useState<LeaderboardEntry[]>([]);
+  const [cloudProfiles, setCloudProfiles] = useState<StudentProfile[]>([]);
 
+  // Fetch all student profiles once on mount (and refresh if logged in student changes)
   useEffect(() => {
+    let isSubscribed = true;
     if (isFirebaseReady()) {
-      cloudFetchLeaderboard(currentStudent?.id, selectedGame).then(entries => {
-        if (entries && entries.length > 0) {
-          setCloudEntries(entries);
-        } else {
-          setCloudEntries([]);
+      cloudFetchStudentProfiles().then(profiles => {
+        if (isSubscribed && profiles && profiles.length > 0) {
+          setCloudProfiles(profiles);
         }
       });
     }
-  }, [currentStudent, selectedGame]);
+    return () => {
+      isSubscribed = false;
+    };
+  }, [currentStudent?.id]);
 
-  const localLeaderboard = getLeaderboard(selectedGame);
-  
-  // Combine cloud entries with local student's live stats
-  let baseLeaderboard: LeaderboardEntry[];
-  if (cloudEntries.length === 0) {
-    baseLeaderboard = localLeaderboard;
-  } else {
-    baseLeaderboard = [...cloudEntries];
-    if (currentStudent && currentStudent.id !== 'participant_glyn_johns' && !currentStudent.id.toLowerCase().includes('glyn') && !currentStudent.name.toLowerCase().includes('glyn')) {
-      const studentStats = selectedGame === 'all'
-        ? currentStudent.stats
-        : (currentStudent.modeStats?.[selectedGame as GameMode] || getStudentModeStats(currentStudent, selectedGame as GameMode));
+  // Synchronously, deterministically compute leaderboard from in-memory profiles
+  // Completely eliminates async state lag, race conditions, and order shuffling between tab clicks!
+  const rawLeaderboard = useMemo(() => {
+    const profiles = [...cloudProfiles];
 
-      const idx = baseLeaderboard.findIndex(e => e.id === currentStudent.id);
+    // If current student is active, ensure their latest local profile is merged
+    if (
+      currentStudent &&
+      currentStudent.id !== 'participant_glyn_johns' &&
+      !currentStudent.id.toLowerCase().includes('glyn') &&
+      !currentStudent.name.toLowerCase().includes('glyn')
+    ) {
+      const idx = profiles.findIndex(p => p.id === currentStudent.id);
       if (idx >= 0) {
-        baseLeaderboard[idx] = {
-          ...baseLeaderboard[idx],
-          totalScore: Math.max(baseLeaderboard[idx].totalScore, studentStats.totalScore),
-          roundsPlayed: Math.max(baseLeaderboard[idx].roundsPlayed, studentStats.roundsPlayed),
-          bestStreak: Math.max(baseLeaderboard[idx].bestStreak, studentStats.bestStreak),
-          averageAccuracyOctaves: studentStats.averageAccuracyOctaves || baseLeaderboard[idx].averageAccuracyOctaves,
-          rankTitle: studentStats.rankTitle || baseLeaderboard[idx].rankTitle,
-          isCurrentUser: true,
-          email: currentStudent.email || baseLeaderboard[idx].email
+        profiles[idx] = {
+          ...profiles[idx],
+          stats: currentStudent.stats,
+          modeStats: currentStudent.modeStats || profiles[idx].modeStats,
+          avatarColor: currentStudent.avatarColor || profiles[idx].avatarColor,
+          cohortYear: currentStudent.cohortYear || profiles[idx].cohortYear,
+          email: currentStudent.email || profiles[idx].email
         };
       } else {
-        baseLeaderboard.push({
-          rank: 0,
-          id: currentStudent.id,
-          name: currentStudent.name,
-          totalScore: studentStats.totalScore,
-          roundsPlayed: studentStats.roundsPlayed,
-          bestStreak: studentStats.bestStreak,
-          averageAccuracyOctaves: studentStats.averageAccuracyOctaves,
-          rankTitle: studentStats.rankTitle,
-          isCurrentUser: true,
-          avatarColor: currentStudent.avatarColor || 'from-cyan-500 to-blue-600',
-          cohortYear: currentStudent.cohortYear || 'Class of 2026',
-          scope: selectedGame,
-          email: currentStudent.email
-        });
+        profiles.push(currentStudent);
       }
     }
-  }
 
-  const rawLeaderboard = mergeGlynJohnsIntoLeaderboard(baseLeaderboard, selectedGame, currentStudent?.id);
+    if (profiles.length === 0) {
+      return getLeaderboard(selectedGame);
+    }
+
+    return buildLeaderboardFromProfiles(profiles, selectedGame, currentStudent?.id);
+  }, [cloudProfiles, selectedGame, currentStudent]);
 
   // Dynamic available years starting with game birth year (2026) up to current calendar year
   const GAME_LAUNCH_YEAR = 2026;

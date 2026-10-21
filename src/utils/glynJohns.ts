@@ -276,10 +276,15 @@ export function mergeGlynJohnsIntoLeaderboard(
   // Add the newly calculated Glyn Johns entry
   filtered.push(glynEntry);
 
-  // Re-sort: highest score first, ties broken by best streak
+  // Re-sort: fully deterministic sort with tie-breakers
   filtered.sort((a, b) => {
     if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-    return b.bestStreak - a.bestStreak;
+    if (b.bestStreak !== a.bestStreak) return b.bestStreak - a.bestStreak;
+    if (b.roundsPlayed !== a.roundsPlayed) return b.roundsPlayed - a.roundsPlayed;
+    if ((a.averageAccuracyOctaves || 0) !== (b.averageAccuracyOctaves || 0)) {
+      return (a.averageAccuracyOctaves || 0) - (b.averageAccuracyOctaves || 0);
+    }
+    return (a.name || '').localeCompare(b.name || '');
   });
 
   // Re-assign ranks 1, 2, 3...

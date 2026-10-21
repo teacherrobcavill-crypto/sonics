@@ -568,12 +568,9 @@ export async function cloudSyncStudentProfile(profile: StudentProfile): Promise<
 }
 
 /**
- * Fetch live classroom leaderboard across all cohorts (including alumni)
+ * Fetch all valid classroom student profiles from Firestore
  */
-export async function cloudFetchLeaderboard(
-  activeStudentId?: string | null,
-  scope: LeaderboardScope = 'all'
-): Promise<LeaderboardEntry[]> {
+export async function cloudFetchStudentProfiles(): Promise<StudentProfile[]> {
   const firestore = getFirebaseDb();
   if (!firestore) return [];
 
@@ -589,49 +586,116 @@ export async function cloudFetchLeaderboard(
       docsList = querySnapshot.docs;
     }
 
-    const entries: LeaderboardEntry[] = [];
+    const profiles: StudentProfile[] = [];
     for (const docSnap of docsList) {
       const p = docSnap.data() as StudentProfile & { cohortYear?: string };
-      // Safety: skip test accounts created before launch and admin accounts
-      if (p.isAdmin || p.id === 'rob' || p.id === 'rob_c') {
+      // Safety: skip test accounts created before launch, admin accounts, and any simulation accounts
+      if (
+        p.isAdmin ||
+        p.id === 'rob' ||
+        p.id === 'rob_c' ||
+        (p.name || '').toLowerCase() === 'rob' ||
+        p.id.toLowerCase().includes('glyn') ||
+        (p.name || '').toLowerCase().includes('glyn')
+      ) {
         continue;
       }
       if (p.createdAt && p.createdAt < PRE_LAUNCH_WIPE_TIMESTAMP) {
         continue;
       }
+      profiles.push(p);
+    }
+    return profiles;
+  } catch (e) {
+    console.error("Failed to fetch cloud student profiles:", e);
+    return [];
+  }
+}
 
-      const userStats = (scope === 'all' || !p.modeStats)
-        ? p.stats
-        : (p.modeStats[scope as GameMode] || getStudentModeStats(p, scope as GameMode));
+/**
+ * Pure, deterministic synchronous leaderboard builder from a profile array.
+ * Guarantees 100% stable ordering across repeated evaluations.
+ */
+export function buildLeaderboardFromProfiles(
+  profiles: StudentProfile[],
+  scope: LeaderboardScope = 'all',
+  activeStudentId?: string | null
+): LeaderboardEntry[] {
+  const entries: LeaderboardEntry[] = [];
 
-      if (!userStats) continue;
-
-      entries.push({
-        rank: 0,
-        id: p.id,
-        name: p.name,
-        totalScore: userStats.totalScore || 0,
-        roundsPlayed: userStats.roundsPlayed || 0,
-        bestStreak: userStats.bestStreak || 0,
-        averageAccuracyOctaves: userStats.averageAccuracyOctaves || 0,
-        rankTitle: getRankTitle(userStats.totalScore || 0, userStats.roundsPlayed || 0),
-        isCurrentUser: p.id === activeStudentId,
-        avatarColor: p.avatarColor || 'from-cyan-500 to-blue-600',
-        cohortYear: p.cohortYear || 'Class of 2026',
-        scope,
-        email: p.email
-      });
+  for (const p of profiles) {
+    if (
+      p.isAdmin ||
+      p.id === 'rob' ||
+      p.id === 'rob_c' ||
+      (p.name || '').toLowerCase() === 'rob' ||
+      p.id.toLowerCase().includes('glyn') ||
+      (p.name || '').toLowerCase().includes('glyn')
+    ) {
+      continue;
+    }
+    if (p.createdAt && p.createdAt < PRE_LAUNCH_WIPE_TIMESTAMP) {
+      continue;
     }
 
-    // Sort in memory (highest total score first, tie-breaker: best streak)
-    entries.sort((a, b) => {
-      if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-      return b.bestStreak - a.bestStreak;
+    // Correctly extract mode stats: if mode is not 'all', never leak overall stats
+    const userStats = scope === 'all'
+      ? p.stats
+      : (p.modeStats?.[scope as GameMode] || getStudentModeStats(p, scope as GameMode));
+
+    if (!userStats) continue;
+
+    entries.push({
+      rank: 0,
+      id: p.id,
+      name: p.name,
+      totalScore: userStats.totalScore || 0,
+      roundsPlayed: userStats.roundsPlayed || 0,
+      bestStreak: userStats.bestStreak || 0,
+      averageAccuracyOctaves: userStats.averageAccuracyOctaves || 0,
+      rankTitle: getRankTitle(userStats.totalScore || 0, userStats.roundsPlayed || 0),
+      isCurrentUser: p.id === activeStudentId,
+      avatarColor: p.avatarColor || 'from-cyan-500 to-blue-600',
+      cohortYear: p.cohortYear || 'Class of 2026',
+      scope,
+      email: p.email
     });
+  }
 
-    if (entries.length > 0) {
-      return mergeGlynJohnsIntoLeaderboard(entries, scope, activeStudentId);
+  // Deterministic, fully-resolved tie-breaking sort:
+  // 1. Highest total score descending
+  // 2. Highest streak descending
+  // 3. Highest rounds played descending
+  // 4. Best accuracy (lowest octave error) ascending
+  // 5. Alphabetical by name ascending (stable final tie-breaker)
+  entries.sort((a, b) => {
+    if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+    if (b.bestStreak !== a.bestStreak) return b.bestStreak - a.bestStreak;
+    if (b.roundsPlayed !== a.roundsPlayed) return b.roundsPlayed - a.roundsPlayed;
+    if ((a.averageAccuracyOctaves || 0) !== (b.averageAccuracyOctaves || 0)) {
+      return (a.averageAccuracyOctaves || 0) - (b.averageAccuracyOctaves || 0);
     }
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  return mergeGlynJohnsIntoLeaderboard(entries, scope, activeStudentId);
+}
+
+/**
+ * Fetch live classroom leaderboard across all cohorts (including alumni)
+ */
+export async function cloudFetchLeaderboard(
+  activeStudentId?: string | null,
+  scope: LeaderboardScope = 'all'
+): Promise<LeaderboardEntry[]> {
+  try {
+    const profiles = await cloudFetchStudentProfiles();
+    if (profiles.length > 0) {
+      return buildLeaderboardFromProfiles(profiles, scope, activeStudentId);
+    }
+
+    const firestore = getFirebaseDb();
+    if (!firestore) return mergeGlynJohnsIntoLeaderboard([], scope, activeStudentId);
 
     // Fallback: Query from 'scores' collection if students collection has no documents
     try {
