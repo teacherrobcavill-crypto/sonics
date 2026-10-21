@@ -36,7 +36,7 @@ export function isDateInSchoolHoliday(date: Date): boolean {
   return SCHOOL_HOLIDAYS.some(h => d >= h.start && d <= h.end);
 }
 
-// Average daily statistics for each game
+// Below-average daily statistics for each game
 interface ModeDailyAverage {
   regularPoints: number;
   regularRounds: number;
@@ -48,44 +48,44 @@ interface ModeDailyAverage {
 
 const MODE_AVERAGES: Record<GameMode, ModeDailyAverage> = {
   peak_master: {
-    regularPoints: 7800,
-    regularRounds: 20,
-    holidayPoints: 3900,
-    holidayRounds: 10,
-    averageAccuracyOctaves: 0.20,
-    bestStreak: 6
+    regularPoints: 1000,
+    regularRounds: 15,
+    holidayPoints: 500,
+    holidayRounds: 8,
+    averageAccuracyOctaves: 0.35,
+    bestStreak: 3
   },
   pan_master: {
-    regularPoints: 6600,
-    regularRounds: 20,
-    holidayPoints: 3300,
-    holidayRounds: 10,
-    averageAccuracyOctaves: 0.18,
-    bestStreak: 7
+    regularPoints: 1400,
+    regularRounds: 15,
+    holidayPoints: 700,
+    holidayRounds: 8,
+    averageAccuracyOctaves: 0.28,
+    bestStreak: 3
   },
   tye_match: {
-    regularPoints: 5700,
-    regularRounds: 20,
-    holidayPoints: 2850,
-    holidayRounds: 10,
-    averageAccuracyOctaves: 0.22,
-    bestStreak: 5
+    regularPoints: 1100,
+    regularRounds: 10,
+    holidayPoints: 550,
+    holidayRounds: 5,
+    averageAccuracyOctaves: 0.32,
+    bestStreak: 2
   },
   filter_doctor: {
-    regularPoints: 2000,
-    regularRounds: 20,
-    holidayPoints: 1000,
-    holidayRounds: 10,
-    averageAccuracyOctaves: 0.25,
-    bestStreak: 5
+    regularPoints: 700,
+    regularRounds: 12,
+    holidayPoints: 350,
+    holidayRounds: 6,
+    averageAccuracyOctaves: 0.38,
+    bestStreak: 2
   },
   db_master: {
-    regularPoints: 1000,
-    regularRounds: 20,
-    holidayPoints: 500,
-    holidayRounds: 10,
-    averageAccuracyOctaves: 0.30,
-    bestStreak: 6
+    regularPoints: 300,
+    regularRounds: 8,
+    holidayPoints: 150,
+    holidayRounds: 4,
+    averageAccuracyOctaves: 0.45,
+    bestStreak: 2
   },
   sandbox: {
     regularPoints: 0,
@@ -185,9 +185,9 @@ export function calculateGlynJohnsStats(targetDate: Date = new Date()): {
   const overallStats: UserStats = {
     totalScore,
     roundsPlayed: totalRounds,
-    currentStreak: daysActive > 0 ? 7 : 0,
-    bestStreak: daysActive > 0 ? 7 : 0,
-    averageAccuracyOctaves: 0.22,
+    currentStreak: daysActive > 0 ? 3 : 0,
+    bestStreak: daysActive > 0 ? 3 : 0,
+    averageAccuracyOctaves: 0.35,
     rankTitle: getRankTitle(totalScore, totalRounds)
   };
 
