@@ -25,6 +25,7 @@ export interface CompressorParams {
   lookaheadMs: number;       // 0.0 to 10.0 ms lookahead buffer (default: 0.0 ms)
   transientAttack: number;   // -100% to +100% transient attack shaping (default: 0)
   transientSustain: number;  // -100% to +100% transient sustain shaping (default: 0)
+  transientRouting: 'pre' | 'post'; // Transient Designer location: Pre or Post compressor (default: 'post')
 }
 
 export const DEFAULT_COMPRESSOR_PARAMS: CompressorParams = {
@@ -47,7 +48,8 @@ export const DEFAULT_COMPRESSOR_PARAMS: CompressorParams = {
   negativeRatio: false,
   lookaheadMs: 0.0,
   transientAttack: 0,
-  transientSustain: 0
+  transientSustain: 0,
+  transientRouting: 'post'
 };
 
 export interface CompressorTelemetry {

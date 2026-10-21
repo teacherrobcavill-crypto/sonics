@@ -37,6 +37,21 @@ export const STEM_PRESETS: Record<string, CompressorPreset[]> = {
       id: 'kick-vintage-round',
       name: 'Vintage Rounding',
       params: { thresholdDb: -12.0, ratio: 2.5, attackMs: 20.0, releaseMs: 120.0 }
+    },
+    {
+      id: 'kick-parallel-slam',
+      name: 'Parallel NYC Beater',
+      params: { thresholdDb: -22.0, ratio: 8.0, attackMs: 2.0, releaseMs: 45.0, mixPercent: 50.0, transientAttack: 30, transientSustain: 15, transientRouting: 'post' }
+    },
+    {
+      id: 'kick-neg-pop',
+      name: 'Negative Inverted Thump',
+      params: { thresholdDb: -16.0, ratio: 2.0, negativeRatio: true, attackMs: 8.0, releaseMs: 50.0, lookaheadMs: 2.0, transientAttack: 35, transientRouting: 'pre' }
+    },
+    {
+      id: 'kick-pre-transient',
+      name: 'Pre-Transient Crack & Glue',
+      params: { thresholdDb: -18.0, ratio: 4.0, attackMs: 25.0, releaseMs: 70.0, transientAttack: 45, transientSustain: -25, transientRouting: 'pre', mixPercent: 85.0 }
     }
   ],
 
@@ -70,6 +85,21 @@ export const STEM_PRESETS: Record<string, CompressorPreset[]> = {
       id: 'snare-wire-bloom',
       name: 'Snare Wire Bloom',
       params: { thresholdDb: -26.0, ratio: 10.0, attackMs: 0.5, releaseMs: 50.0 }
+    },
+    {
+      id: 'snare-parallel-crush',
+      name: 'Parallel Ghost Smasher',
+      params: { thresholdDb: -24.0, ratio: 10.0, attackMs: 0.8, releaseMs: 35.0, mixPercent: 45.0, transientSustain: 35, transientRouting: 'post' }
+    },
+    {
+      id: 'snare-neg-crack',
+      name: 'Negative Omni Snap',
+      params: { thresholdDb: -15.0, ratio: 1.5, negativeRatio: true, attackMs: 6.0, releaseMs: 65.0, lookaheadMs: 1.5, transientAttack: 25, transientRouting: 'pre' }
+    },
+    {
+      id: 'snare-post-body',
+      name: 'Post-Sustain Bloom',
+      params: { thresholdDb: -19.0, ratio: 5.0, attackMs: 20.0, releaseMs: 90.0, transientAttack: 20, transientSustain: 40, transientRouting: 'post', mixPercent: 90.0 }
     }
   ],
 
@@ -103,6 +133,21 @@ export const STEM_PRESETS: Record<string, CompressorPreset[]> = {
       id: 'bass-motown-warm',
       name: 'Warm Vintage Thump',
       params: { thresholdDb: -14.0, ratio: 2.5, attackMs: 35.0, releaseMs: 300.0 }
+    },
+    {
+      id: 'bass-parallel-density',
+      name: 'Parallel Wall of Bass',
+      params: { thresholdDb: -22.0, ratio: 6.0, attackMs: 3.5, releaseMs: 120.0, mixPercent: 55.0, transientAttack: 15, transientSustain: 25, transientRouting: 'post' }
+    },
+    {
+      id: 'bass-neg-growl',
+      name: 'Negative Transient Inversion',
+      params: { thresholdDb: -17.0, ratio: 3.0, negativeRatio: true, attackMs: 10.0, releaseMs: 90.0, lookaheadMs: 2.0, transientAttack: -20, transientRouting: 'pre' }
+    },
+    {
+      id: 'bass-pre-attack',
+      name: 'Pre-Attack Pick Punch',
+      params: { thresholdDb: -16.0, ratio: 3.8, attackMs: 15.0, releaseMs: 80.0, transientAttack: 35, transientSustain: -10, transientRouting: 'pre', mixPercent: 80.0 }
     }
   ],
 
@@ -136,6 +181,21 @@ export const STEM_PRESETS: Record<string, CompressorPreset[]> = {
       id: 'bus-aggro-slam',
       name: 'Aggressive Kit Slam',
       params: { thresholdDb: -23.0, ratio: 8.0, attackMs: 1.5, releaseMs: 40.0 }
+    },
+    {
+      id: 'bus-ny-blend',
+      name: 'Classic NY Parallel Blend',
+      params: { thresholdDb: -24.0, ratio: 8.0, attackMs: 1.5, releaseMs: 40.0, mixPercent: 45.0, transientAttack: 25, transientSustain: 20, transientRouting: 'post' }
+    },
+    {
+      id: 'bus-negative-crush',
+      name: 'Negative Omnipressor Crush',
+      params: { thresholdDb: -18.0, ratio: 2.0, negativeRatio: true, attackMs: 5.0, releaseMs: 50.0, lookaheadMs: 3.0, mixPercent: 70.0, transientAttack: 30, transientRouting: 'pre' }
+    },
+    {
+      id: 'bus-pre-sculpt',
+      name: 'Pre-Transient Drum Carver',
+      params: { thresholdDb: -15.0, ratio: 3.5, attackMs: 30.0, releaseMs: 100.0, transientAttack: 40, transientSustain: -25, transientRouting: 'pre', mixPercent: 85.0 }
     }
   ],
 
@@ -169,6 +229,21 @@ export const STEM_PRESETS: Record<string, CompressorPreset[]> = {
       id: 'custom-analog-warmth',
       name: 'Analog Tube Warmth',
       params: { thresholdDb: -14.0, ratio: 3.0, attackMs: 18.0, releaseMs: 220.0 }
+    },
+    {
+      id: 'custom-parallel-magic',
+      name: 'Dynamic Parallel Glue',
+      params: { thresholdDb: -20.0, ratio: 5.0, attackMs: 4.0, releaseMs: 75.0, mixPercent: 50.0, transientAttack: 25, transientSustain: 20, transientRouting: 'post' }
+    },
+    {
+      id: 'custom-neg-dynamics',
+      name: 'Negative Extreme Expansion',
+      params: { thresholdDb: -16.0, ratio: 1.8, negativeRatio: true, attackMs: 8.0, releaseMs: 60.0, lookaheadMs: 2.5, transientAttack: 30, transientRouting: 'pre' }
+    },
+    {
+      id: 'custom-transient-sculpt',
+      name: 'Pre-Comp Transient Shaper',
+      params: { thresholdDb: -17.0, ratio: 4.0, attackMs: 20.0, releaseMs: 85.0, transientAttack: 45, transientSustain: -35, transientRouting: 'pre', mixPercent: 90.0 }
     }
   ]
 };

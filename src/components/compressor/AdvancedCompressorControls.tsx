@@ -84,6 +84,17 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
               </span>
             )}
 
+            {/* Transient Designer Routing Pill */}
+            {(Math.abs(params.transientAttack || 0) > 0 || Math.abs(params.transientSustain || 0) > 0) && (
+              <span className={`px-2 py-0.5 rounded-md border font-bold ${
+                params.transientRouting === 'pre'
+                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                  : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+              }`}>
+                TD: {params.transientRouting === 'pre' ? 'PRE' : 'POST'}
+              </span>
+            )}
+
             {/* Mid Pill */}
             <span className={`px-2 py-0.5 rounded-md border ${
               params.scMidActive && Math.abs(params.scMidGainDb) > 0.05
@@ -190,7 +201,7 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
               </div>
 
               <div className="text-[9.5px] text-slate-400 leading-tight">
-                Blends dry uncompressed with compressed tone for punch.
+                Blends original input with compression &amp; transient designer wet tone.
               </div>
             </div>
 

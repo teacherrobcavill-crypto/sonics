@@ -606,41 +606,64 @@ export const CompressorLab: React.FC<CompressorLabProps> = ({
             <div className="relative w-full flex items-center justify-center">
               {/* Transient Designer Floating Bridge (Desktop / Tablet) */}
               <div
-                className="hidden sm:flex absolute right-full top-1/2 -translate-y-1/2 translate-x-1/2 z-20 items-center justify-center gap-2 bg-studio-950/95 border border-studio-800/90 rounded-2xl px-2.5 py-1.5 shadow-xl shadow-black/60 pointer-events-auto"
-                style={{ width: '144px' }}
+                className="hidden sm:flex flex-col absolute right-full top-1/2 -translate-y-1/2 translate-x-1/2 z-20 items-center justify-center bg-studio-950/95 border border-studio-800/90 rounded-2xl px-2 py-1.5 shadow-xl shadow-black/60 pointer-events-auto"
+                style={{ width: '148px' }}
               >
-                <div className="flex flex-col items-center">
-                  <RotaryKnob
-                    label="Transient"
-                    value={params.transientAttack || 0}
-                    min={-100}
-                    max={100}
-                    step={2}
-                    defaultValue={0}
-                    unit="%"
-                    color="#f43f5e"
-                    size="sm"
-                    onChange={v => updateParam('transientAttack', v)}
-                    formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
-                  />
+                {/* PRE / POST Routing Button above the knobs */}
+                <div className="flex items-center justify-between w-full px-1.5 pb-1 border-b border-studio-800/50 mb-1">
+                  <span className="text-[7.5px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                    ROUTING
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => updateParam('transientRouting', params.transientRouting === 'pre' ? 'post' : 'pre')}
+                    className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-black uppercase transition-all border cursor-pointer flex items-center gap-1 ${
+                      params.transientRouting === 'pre'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-500/20'
+                        : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm shadow-cyan-500/20'
+                    }`}
+                    title={`Click to switch between PRE (before compressor) and POST (after compressor). Currently: ${(params.transientRouting || 'post').toUpperCase()}`}
+                  >
+                    <span className={params.transientRouting === 'pre' ? 'text-amber-300 font-extrabold' : 'text-slate-500'}>PRE</span>
+                    <span className="text-slate-600">/</span>
+                    <span className={(params.transientRouting || 'post') === 'post' ? 'text-cyan-300 font-extrabold' : 'text-slate-500'}>POST</span>
+                  </button>
                 </div>
 
-                <div className="h-8 w-px bg-studio-800/80 my-auto" />
+                <div className="flex items-center justify-center gap-2 w-full">
+                  <div className="flex flex-col items-center">
+                    <RotaryKnob
+                      label="Transient"
+                      value={params.transientAttack || 0}
+                      min={-100}
+                      max={100}
+                      step={2}
+                      defaultValue={0}
+                      unit="%"
+                      color="#f43f5e"
+                      size="sm"
+                      onChange={v => updateParam('transientAttack', v)}
+                      formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
+                    />
+                  </div>
 
-                <div className="flex flex-col items-center">
-                  <RotaryKnob
-                    label="Sustain"
-                    value={params.transientSustain || 0}
-                    min={-100}
-                    max={100}
-                    step={2}
-                    defaultValue={0}
-                    unit="%"
-                    color="#10b981"
-                    size="sm"
-                    onChange={v => updateParam('transientSustain', v)}
-                    formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
-                  />
+                  <div className="h-8 w-px bg-studio-800/80 my-auto" />
+
+                  <div className="flex flex-col items-center">
+                    <RotaryKnob
+                      label="Sustain"
+                      value={params.transientSustain || 0}
+                      min={-100}
+                      max={100}
+                      step={2}
+                      defaultValue={0}
+                      unit="%"
+                      color="#10b981"
+                      size="sm"
+                      onChange={v => updateParam('transientSustain', v)}
+                      formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -661,36 +684,54 @@ export const CompressorLab: React.FC<CompressorLabProps> = ({
           </div>
 
           {/* Mobile Transient Designer Bar (Rendered cleanly below the 2x2 grid on small mobile viewports) */}
-          <div className="sm:hidden flex items-center justify-around bg-studio-950/80 border border-studio-800 rounded-xl p-2 mt-2">
-            <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-              Transient Designer:
-            </span>
-            <RotaryKnob
-              label="Transient"
-              value={params.transientAttack || 0}
-              min={-100}
-              max={100}
-              step={2}
-              defaultValue={0}
-              unit="%"
-              color="#f43f5e"
-              size="sm"
-              onChange={v => updateParam('transientAttack', v)}
-              formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
-            />
-            <RotaryKnob
-              label="Sustain"
-              value={params.transientSustain || 0}
-              min={-100}
-              max={100}
-              step={2}
-              defaultValue={0}
-              unit="%"
-              color="#10b981"
-              size="sm"
-              onChange={v => updateParam('transientSustain', v)}
-              formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
-            />
+          <div className="sm:hidden flex items-center justify-between bg-studio-950/80 border border-studio-800 rounded-xl px-3 py-2 mt-2">
+            <div className="flex flex-col items-start gap-1">
+              <span className="text-[8.5px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+                Transient:
+              </span>
+              <button
+                type="button"
+                onClick={() => updateParam('transientRouting', params.transientRouting === 'pre' ? 'post' : 'pre')}
+                className={`px-2 py-0.5 rounded text-[8px] font-mono font-black uppercase transition-all border cursor-pointer flex items-center gap-1 ${
+                  params.transientRouting === 'pre'
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-500/20'
+                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm shadow-cyan-500/20'
+                }`}
+                title={`Click to switch between PRE (before compressor) and POST (after compressor). Currently: ${(params.transientRouting || 'post').toUpperCase()}`}
+              >
+                <span className={params.transientRouting === 'pre' ? 'text-amber-300 font-extrabold' : 'text-slate-500'}>PRE</span>
+                <span className="text-slate-600">/</span>
+                <span className={(params.transientRouting || 'post') === 'post' ? 'text-cyan-300 font-extrabold' : 'text-slate-500'}>POST</span>
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <RotaryKnob
+                label="Transient"
+                value={params.transientAttack || 0}
+                min={-100}
+                max={100}
+                step={2}
+                defaultValue={0}
+                unit="%"
+                color="#f43f5e"
+                size="sm"
+                onChange={v => updateParam('transientAttack', v)}
+                formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
+              />
+              <RotaryKnob
+                label="Sustain"
+                value={params.transientSustain || 0}
+                min={-100}
+                max={100}
+                step={2}
+                defaultValue={0}
+                unit="%"
+                color="#10b981"
+                size="sm"
+                onChange={v => updateParam('transientSustain', v)}
+                formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
+              />
+            </div>
           </div>
 
           {/* Advanced Controls Reveal: Parallel Blender, Sidechain HPF, Sweepable Mid Focus & Monitor */}

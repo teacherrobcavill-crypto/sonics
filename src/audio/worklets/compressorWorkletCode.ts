@@ -48,6 +48,7 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
     // Transient Designer DSP state (differential envelope followers)
     this.transientAttack = 0.0;  // -1.0 to +1.0
     this.transientSustain = 0.0; // -1.0 to +1.0
+    this.transientRouting = 'post'; // 'pre' (before compressor) or 'post' (after compressor)
     this.tdEnvFast = 0.0;
     this.tdEnvSlow = 0.0;
     this.tdEnvSust = 0.0;
@@ -169,6 +170,9 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         }
         if (p.transientSustain !== undefined) {
           this.transientSustain = Math.max(-100.0, Math.min(100.0, p.transientSustain)) / 100.0;
+        }
+        if (p.transientRouting !== undefined) {
+          this.transientRouting = p.transientRouting === 'pre' ? 'pre' : 'post';
         }
       } else if (msg.type === 'setSampleRate') {
         this.fs = msg.sampleRate || 44100;
@@ -397,9 +401,36 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       this.inRmsAccumL += inL * inL;
       this.inRmsAccumR += inR * inR;
 
-      // 2. Feed-Forward Sidechain Filtering (HPF & Sweepable Mid Band)
-      let scL = inL;
-      let scR = inR;
+      // 2. Pre-Compressor Transient Designer (if routing is set to 'pre')
+      let preCompL = delayedL;
+      let preCompR = delayedR;
+      let tdGainPre = 1.0;
+
+      if (this.transientRouting === 'pre') {
+        if (Math.abs(this.transientAttack) > 0.005 || Math.abs(this.transientSustain) > 0.005) {
+          const monoAbs = 0.5 * (Math.abs(preCompL) + Math.abs(preCompR));
+          this.tdEnvFast = this.alphaTdFast * this.tdEnvFast + (1.0 - this.alphaTdFast) * monoAbs;
+          this.tdEnvSlow = this.alphaTdSlow * this.tdEnvSlow + (1.0 - this.alphaTdSlow) * monoAbs;
+          this.tdEnvSust = this.alphaTdSust * this.tdEnvSust + (1.0 - this.alphaTdSust) * monoAbs;
+
+          const attackDiff = Math.max(0.0, this.tdEnvFast - this.tdEnvSlow);
+          const normalizedDiff = attackDiff / (this.tdEnvSlow + 1e-4);
+
+          const signA = Math.sign(this.transientAttack);
+          const shapedAttack = signA * Math.pow(Math.abs(this.transientAttack), 1.8);
+          const attackGainMod = 1.0 + (shapedAttack * normalizedDiff * 1.5);
+          const sustainGainMod = 1.0 + (this.transientSustain * (this.tdEnvSust / (this.tdEnvFast + 1e-4)) * 0.7);
+
+          tdGainPre = Math.max(0.05, Math.min(3.0, attackGainMod * sustainGainMod));
+          preCompL *= tdGainPre;
+          preCompR *= tdGainPre;
+        }
+      }
+
+      // 3. Feed-Forward Sidechain Filtering (HPF & Sweepable Mid Band)
+      // When Transient Designer is PRE, the sidechain detector receives the shaped transients
+      let scL = this.transientRouting === 'pre' ? inL * tdGainPre : inL;
+      let scR = this.transientRouting === 'pre' ? inR * tdGainPre : inR;
 
       if (this.scHpfActive) {
         scL = this.processHpfL(scL);
@@ -411,14 +442,14 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         scR = this.processMidR(scR);
       }
 
-      // 3. Sidechain Detection (Stereo Maximum of Filtered Signal)
+      // 4. Sidechain Detection (Stereo Maximum of Filtered Signal)
       const scLevel = Math.max(Math.abs(scL), Math.abs(scR));
       const scDb = 20.0 * Math.log10(Math.max(scLevel, 1e-6));
 
-      // 4. Static Gain Computer with Soft-Knee
+      // 5. Static Gain Computer with Soft-Knee
       const targetGrDb = this.computeTargetGainReduction(scDb);
 
-      // 5. Branching Attack / Release Envelope Filter
+      // 6. Branching Attack / Release Envelope Filter
       if (targetGrDb < this.envelopeDb) {
         this.envelopeDb = this.alphaAtt * this.envelopeDb + (1.0 - this.alphaAtt) * targetGrDb;
       } else {
@@ -430,52 +461,59 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       this.grMaxInInterval = Math.max(this.grMaxInInterval, this.envelopeDb);
       this.avgGr300 = this.alpha300 * this.avgGr300 + (1.0 - this.alpha300) * Math.abs(this.envelopeDb);
 
-      // 6. Base VCA Gain Reduction (Linear factor)
+      // 7. Base VCA Gain Reduction (Linear factor)
       const grLinear = Math.pow(10.0, this.envelopeDb / 20.0);
 
-      // 7. Parallel Blender (NY style) & Sidechain Monitor Routing
+      // 8. Process Wet Signal (Compressor VCA & Transient Designer)
+      let wetL, wetR;
+      if (this.transientRouting === 'pre') {
+        // PRE mode: preCompL/R was shaped by TD, then compressed by VCA
+        wetL = preCompL * grLinear;
+        wetR = preCompR * grLinear;
+      } else {
+        // POST mode: delayedL/R compressed by VCA first
+        let compL = delayedL * grLinear;
+        let compR = delayedR * grLinear;
+
+        // Then Transient Designer shapes the post-compressed audio
+        if (Math.abs(this.transientAttack) > 0.005 || Math.abs(this.transientSustain) > 0.005) {
+          const monoAbs = 0.5 * (Math.abs(compL) + Math.abs(compR));
+          this.tdEnvFast = this.alphaTdFast * this.tdEnvFast + (1.0 - this.alphaTdFast) * monoAbs;
+          this.tdEnvSlow = this.alphaTdSlow * this.tdEnvSlow + (1.0 - this.alphaTdSlow) * monoAbs;
+          this.tdEnvSust = this.alphaTdSust * this.tdEnvSust + (1.0 - this.alphaTdSust) * monoAbs;
+
+          const attackDiff = Math.max(0.0, this.tdEnvFast - this.tdEnvSlow);
+          const normalizedDiff = attackDiff / (this.tdEnvSlow + 1e-4);
+
+          const signA = Math.sign(this.transientAttack);
+          const shapedAttack = signA * Math.pow(Math.abs(this.transientAttack), 1.8);
+          const attackGainMod = 1.0 + (shapedAttack * normalizedDiff * 1.5);
+          const sustainGainMod = 1.0 + (this.transientSustain * (this.tdEnvSust / (this.tdEnvFast + 1e-4)) * 0.7);
+
+          const tdGainPost = Math.max(0.05, Math.min(3.0, attackGainMod * sustainGainMod));
+          compL *= tdGainPost;
+          compR *= tdGainPost;
+        }
+
+        wetL = compL;
+        wetR = compR;
+      }
+
+      // 9. Parallel Blender: blends the combined (compression + transient designer) wet signal
+      // with the original clean input signal (delayedL/R aligned with lookahead)
       let resL, resR;
       if (this.scMonitor) {
         // Monitor mode: engineer auditions the filtered sidechain detection path
         resL = scL;
         resR = scR;
       } else {
-        const wetL = delayedL * grLinear;
-        const wetR = delayedR * grLinear;
-
         if (this.mixLinear < 0.999) {
-          // Parallel blend: dry uncompressed delayed + wet compressed
           resL = (1.0 - this.mixLinear) * delayedL + this.mixLinear * wetL;
           resR = (1.0 - this.mixLinear) * delayedR + this.mixLinear * wetR;
         } else {
           resL = wetL;
           resR = wetR;
         }
-      }
-
-      // 8. Transient Designer (Attack & Sustain Envelope Differential Processing)
-      if (Math.abs(this.transientAttack) > 0.005 || Math.abs(this.transientSustain) > 0.005) {
-        const monoAbs = 0.5 * (Math.abs(resL) + Math.abs(resR));
-        this.tdEnvFast = this.alphaTdFast * this.tdEnvFast + (1.0 - this.alphaTdFast) * monoAbs;
-        this.tdEnvSlow = this.alphaTdSlow * this.tdEnvSlow + (1.0 - this.alphaTdSlow) * monoAbs;
-        this.tdEnvSust = this.alphaTdSust * this.tdEnvSust + (1.0 - this.alphaTdSust) * monoAbs;
-
-        // Differential onset: fast envelope minus slow envelope captures initial attack burst
-        const attackDiff = Math.max(0.0, this.tdEnvFast - this.tdEnvSlow);
-        const normalizedDiff = attackDiff / (this.tdEnvSlow + 1e-4);
-
-        // Scaled non-linear attack response: first quarter turn (|a| <= 0.25) is subtle (~8%),
-        // ramping up progressively to full punch or cut across the remaining 75% of travel.
-        const signA = Math.sign(this.transientAttack);
-        const shapedAttack = signA * Math.pow(Math.abs(this.transientAttack), 1.8);
-        const attackGainMod = 1.0 + (shapedAttack * normalizedDiff * 1.5);
-
-        // Sustain modulation: slow envelope sustains when signal is present
-        const sustainGainMod = 1.0 + (this.transientSustain * (this.tdEnvSust / (this.tdEnvFast + 1e-4)) * 0.7);
-
-        const tdGain = Math.max(0.05, Math.min(3.0, attackGainMod * sustainGainMod));
-        resL *= tdGain;
-        resR *= tdGain;
       }
 
       // Track uncompensated processed energy for Auto Level calculation
