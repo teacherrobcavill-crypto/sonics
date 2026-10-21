@@ -1163,7 +1163,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
           <div className="text-center space-y-1">
             <h2 className={`${isMobile ? 'text-base font-bold' : 'text-lg sm:text-2xl font-black'} text-white tracking-tight flex items-center justify-center gap-2`}>
               <SlidersHorizontal className={`${isMobile ? 'w-4 h-4' : 'w-5 h-5 sm:w-6 sm:h-6'} text-studio-accent`} />
-              <span>dB Master: Precision Level Matching</span>
+              <span>dB Chef: Precision Level Matching</span>
             </h2>
             {!isMobile && (
               <p className="text-xs sm:text-sm text-slate-400 font-mono">
@@ -1760,7 +1760,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
 
             <div className="space-y-1">
               <h3 className="text-2xl font-black font-sans text-white">
-                🏆 dB Master Challenge Complete!
+                🏆 dB Chef Challenge Complete!
               </h3>
               <p className="text-xs sm:text-sm text-slate-300 font-mono">
                 Outstanding ear training! You conquered all 20 rounds with <strong className="text-red-400">{lives} of 3 Lives</strong> remaining! Final Score: <strong className="text-emerald-400">+{sessionScore} PTS</strong>.
@@ -1800,7 +1800,7 @@ export const DbMasterGame: React.FC<DbMasterGameProps> = ({
             <div>
               <span className="font-bold">Daily Training Goal Met!</span>
               <span className="text-slate-400 block sm:inline sm:ml-2">
-                You've completed all 20 rounds for dB Master today. Resets tomorrow at midnight!
+                You've completed all 20 rounds for dB Chef today. Resets tomorrow at midnight!
               </span>
             </div>
           </div>

@@ -700,7 +700,7 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
             </span>
           </div>
           <h2 className={`${isMobile ? 'text-lg mt-2' : 'text-xl mt-1.5'} font-bold text-white flex flex-wrap items-baseline gap-2`}>
-            <span>Pan Master</span>
+            <span>Pan Professor</span>
             <span className="text-xs font-normal text-slate-400">(Stereo Soundstage Placement)</span>
           </h2>
           <p className="text-xs text-slate-400 mt-1 leading-relaxed">
@@ -945,7 +945,7 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
               </div>
               <div>
                 <h3 className="text-base sm:text-lg font-bold text-white font-sans">
-                  Out of Lives &bull; Pan Master Session Ended
+                  Out of Lives &bull; Pan Professor Session Ended
                 </h3>
                 <p className="text-xs text-slate-300 font-mono mt-0.5">
                   You survived to <strong className="text-white">Round {roundCount} of 20</strong> and banked <strong className="text-emerald-400">+{sessionScore.toLocaleString()} PTS</strong>.
@@ -1011,7 +1011,7 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
               </div>
               <div>
                 <h3 className="text-lg font-bold text-white font-sans flex items-center gap-2">
-                  <span>🏆 Pan Master Challenge Complete!</span>
+                  <span>🏆 Pan Professor Challenge Complete!</span>
                 </h3>
                 <p className="text-xs text-slate-300 font-mono mt-1">
                   You conquered all 20 rounds of stereo placement with <strong className="text-red-400">{lives} of 3 Lives</strong> remaining! Final Run Score: <strong className="text-emerald-400">+{sessionScore.toLocaleString()} PTS</strong>.
@@ -1038,7 +1038,7 @@ export const PanMasterGame: React.FC<PanMasterGameProps> = ({
             <div>
               <span className="font-bold">Daily Training Goal Met!</span>
               <span className="text-slate-400 block sm:inline sm:ml-2">
-                You've completed all 20 rounds for Pan Master today. Resets tomorrow at midnight!
+                You've completed all 20 rounds for Pan Professor today. Resets tomorrow at midnight!
               </span>
             </div>
           </div>

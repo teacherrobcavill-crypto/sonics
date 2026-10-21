@@ -79,8 +79,8 @@ const LEADERBOARD_GAMES: {
   },
   {
     id: 'pan_master',
-    label: 'Pan Master',
-    shortLabel: 'Pan Master',
+    label: 'Pan Professor',
+    shortLabel: 'Pan Professor',
     icon: Compass,
     color: 'text-studio-neonBlue',
     activeBg: 'bg-studio-neonBlue text-studio-950 font-black shadow-studio-neonBlue/25',
@@ -89,8 +89,8 @@ const LEADERBOARD_GAMES: {
   },
   {
     id: 'db_master',
-    label: 'dB Master',
-    shortLabel: 'dB Master',
+    label: 'dB Chef',
+    shortLabel: 'dB Chef',
     icon: Volume2,
     color: 'text-emerald-400',
     activeBg: 'bg-emerald-500 text-studio-950 font-black shadow-emerald-500/25',

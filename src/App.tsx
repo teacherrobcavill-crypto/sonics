@@ -648,7 +648,7 @@ export const App: React.FC = () => {
               }`}
             >
               <Compass className="w-4 h-4" />
-              <span>Pan Master</span>
+              <span>Pan Professor</span>
             </button>
 
             <button
@@ -660,7 +660,7 @@ export const App: React.FC = () => {
               }`}
             >
               <Volume2 className="w-4 h-4" />
-              <span>dB Master</span>
+              <span>dB Chef</span>
             </button>
 
             <button
