@@ -38,6 +38,23 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
     this.scMidActive = false;
     this.scMonitor = false;
 
+    // Lookahead Ring Buffer (up to 15ms at 96kHz = ~1440 samples, 2048 size)
+    this.lookaheadMs = 0.0;
+    this.lookaheadSamples = 0;
+    this.lookaheadBufferL = new Float32Array(2048);
+    this.lookaheadBufferR = new Float32Array(2048);
+    this.lookaheadWriteIdx = 0;
+
+    // Transient Designer DSP state (differential envelope followers)
+    this.transientAttack = 0.0;  // -1.0 to +1.0
+    this.transientSustain = 0.0; // -1.0 to +1.0
+    this.tdEnvFast = 0.0;
+    this.tdEnvSlow = 0.0;
+    this.tdEnvSust = 0.0;
+    this.alphaTdFast = Math.exp(-1.0 / (0.003 * 44100)); // 3ms fast transient attack
+    this.alphaTdSlow = Math.exp(-1.0 / (0.025 * 44100)); // 25ms slower transient body
+    this.alphaTdSust = Math.exp(-1.0 / (0.150 * 44100)); // 150ms sustain body
+
     // Sidechain Biquad Filter States (Direct Form II Transposed)
     this.hpfB0 = 1.0; this.hpfB1 = 0.0; this.hpfB2 = 0.0;
     this.hpfA1 = 0.0; this.hpfA2 = 0.0;
@@ -138,10 +155,28 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         if (p.scMonitor !== undefined) {
           this.scMonitor = Boolean(p.scMonitor);
         }
+
+        // Lookahead sync
+        if (p.lookaheadMs !== undefined) {
+          this.lookaheadMs = Math.max(0.0, Math.min(10.0, p.lookaheadMs));
+          this.lookaheadSamples = Math.round(this.lookaheadMs * 0.001 * this.fs);
+        }
+
+        // Transient Designer sync
+        if (p.transientAttack !== undefined) {
+          this.transientAttack = Math.max(-100.0, Math.min(100.0, p.transientAttack)) / 100.0;
+        }
+        if (p.transientSustain !== undefined) {
+          this.transientSustain = Math.max(-100.0, Math.min(100.0, p.transientSustain)) / 100.0;
+        }
       } else if (msg.type === 'setSampleRate') {
         this.fs = msg.sampleRate || 44100;
         this.alpha300 = Math.exp(-1.0 / (0.300 * this.fs));
         this.telemetryInterval = Math.round(this.fs / 60); // 60 FPS update rate
+        this.lookaheadSamples = Math.round(this.lookaheadMs * 0.001 * this.fs);
+        this.alphaTdFast = Math.exp(-1.0 / (0.003 * this.fs));
+        this.alphaTdSlow = Math.exp(-1.0 / (0.025 * this.fs));
+        this.alphaTdSust = Math.exp(-1.0 / (0.150 * this.fs));
         this.updateHpfCoeffs();
         this.updateMidCoeffs();
       } else if (msg.type === 'reset') {
@@ -151,6 +186,9 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         this.currentGrDb = 0.0;
         this.hpfS1_L = 0; this.hpfS2_L = 0; this.hpfS1_R = 0; this.hpfS2_R = 0;
         this.midS1_L = 0; this.midS2_L = 0; this.midS1_R = 0; this.midS2_R = 0;
+        this.tdEnvFast = 0; this.tdEnvSlow = 0; this.tdEnvSust = 0;
+        this.lookaheadBufferL.fill(0);
+        this.lookaheadBufferR.fill(0);
       }
     };
   }
@@ -314,9 +352,25 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       const pwrPre = 0.5 * (rawL * rawL + rawR * rawR);
       this.preGainEnergy300 = this.alpha300 * this.preGainEnergy300 + (1.0 - this.alpha300) * pwrPre;
 
-      // 1. Direct Input
+      // 1. Direct Input & Lookahead Ring Buffer Storage
       const inL = rawL;
       const inR = rawR;
+
+      // Store in lookahead delay ring buffer for the audio path
+      const bufLen = 2048;
+      const wIdx = this.lookaheadWriteIdx;
+      this.lookaheadBufferL[wIdx] = inL;
+      this.lookaheadBufferR[wIdx] = inR;
+
+      // Delayed audio read index for VCA application
+      let delayedL = inL;
+      let delayedR = inR;
+      if (this.lookaheadSamples > 0) {
+        const rIdx = (wIdx - this.lookaheadSamples + bufLen) % bufLen;
+        delayedL = this.lookaheadBufferL[rIdx];
+        delayedR = this.lookaheadBufferR[rIdx];
+      }
+      this.lookaheadWriteIdx = (wIdx + 1) % bufLen;
 
       // Meter accumulators
       this.inPeakL = Math.max(this.inPeakL, Math.abs(inL));
@@ -368,20 +422,39 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         resL = scL;
         resR = scR;
       } else {
-        const wetL = inL * vcaGain;
-        const wetR = inR * vcaGain;
+        const wetL = delayedL * vcaGain;
+        const wetR = delayedR * vcaGain;
 
         if (this.mixLinear < 0.999) {
-          // Parallel blend: dry uncompressed + wet compressed
-          resL = (1.0 - this.mixLinear) * inL + this.mixLinear * wetL;
-          resR = (1.0 - this.mixLinear) * inR + this.mixLinear * wetR;
+          // Parallel blend: dry uncompressed delayed + wet compressed
+          resL = (1.0 - this.mixLinear) * delayedL + this.mixLinear * wetL;
+          resR = (1.0 - this.mixLinear) * delayedR + this.mixLinear * wetR;
         } else {
           resL = wetL;
           resR = wetR;
         }
       }
 
-      // 8. Failsafe Ear-Protection Ceiling (-0.5 dBFS / 0.95 amplitude)
+      // 8. Transient Designer (Attack & Sustain Envelope Differential Processing)
+      if (Math.abs(this.transientAttack) > 0.01 || Math.abs(this.transientSustain) > 0.01) {
+        const monoAbs = 0.5 * (Math.abs(resL) + Math.abs(resR));
+        this.tdEnvFast = this.alphaTdFast * this.tdEnvFast + (1.0 - this.alphaTdFast) * monoAbs;
+        this.tdEnvSlow = this.alphaTdSlow * this.tdEnvSlow + (1.0 - this.alphaTdSlow) * monoAbs;
+        this.tdEnvSust = this.alphaTdSust * this.tdEnvSust + (1.0 - this.alphaTdSust) * monoAbs;
+
+        // Differential onset: fast envelope minus slow envelope captures initial attack burst
+        const attackDiff = Math.max(0.0, this.tdEnvFast - this.tdEnvSlow);
+        const attackGainMod = 1.0 + (this.transientAttack * (attackDiff / (this.tdEnvSlow + 1e-4)) * 1.5);
+
+        // Sustain modulation: slow envelope sustains when signal is present
+        const sustainGainMod = 1.0 + (this.transientSustain * (this.tdEnvSust / (this.tdEnvFast + 1e-4)) * 0.7);
+
+        const tdGain = Math.max(0.05, Math.min(3.0, attackGainMod * sustainGainMod));
+        resL *= tdGain;
+        resR *= tdGain;
+      }
+
+      // 9. Failsafe Ear-Protection Ceiling (-0.5 dBFS / 0.95 amplitude)
       resL = Math.max(-0.95, Math.min(0.95, resL));
       resR = Math.max(-0.95, Math.min(0.95, resR));
 

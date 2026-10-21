@@ -558,7 +558,7 @@ export const CompressorLab: React.FC<CompressorLabProps> = ({
 
           </div>
 
-          {/* 4 Precision Rotary Knobs */}
+          {/* Main 4 Precision Rotary Knobs with Embedded Center Transient Designer */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-8 pt-4 pb-1 border-t border-studio-800/80 justify-items-center">
             <RotaryKnob
               label="Threshold"
@@ -602,17 +602,94 @@ export const CompressorLab: React.FC<CompressorLabProps> = ({
               formatValue={v => (v < 1.0 ? `${v.toFixed(1)} ms` : `${v.toFixed(0)} ms`)}
             />
 
+            {/* Release Knob with Embedded Center Transient Designer (in between Attack & Release) */}
+            <div className="relative w-full flex items-center justify-center">
+              {/* Transient Designer Floating Bridge (Desktop / Tablet) */}
+              <div
+                className="hidden sm:flex absolute right-full top-1/2 -translate-y-1/2 translate-x-1/2 z-20 items-center justify-center gap-2 bg-studio-950/95 border border-studio-800/90 rounded-2xl px-2.5 py-1.5 shadow-xl shadow-black/60 pointer-events-auto"
+                style={{ width: '138px' }}
+              >
+                <div className="flex flex-col items-center">
+                  <RotaryKnob
+                    label="TD ATTACK"
+                    value={params.transientAttack || 0}
+                    min={-100}
+                    max={100}
+                    step={2}
+                    defaultValue={0}
+                    unit="%"
+                    color="#f43f5e"
+                    size="sm"
+                    onChange={v => updateParam('transientAttack', v)}
+                    formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
+                  />
+                </div>
+
+                <div className="h-8 w-px bg-studio-800/80 my-auto" />
+
+                <div className="flex flex-col items-center">
+                  <RotaryKnob
+                    label="TD SUST"
+                    value={params.transientSustain || 0}
+                    min={-100}
+                    max={100}
+                    step={2}
+                    defaultValue={0}
+                    unit="%"
+                    color="#10b981"
+                    size="sm"
+                    onChange={v => updateParam('transientSustain', v)}
+                    formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
+                  />
+                </div>
+              </div>
+
+              {/* Release Knob */}
+              <RotaryKnob
+                label="Release"
+                value={params.releaseMs}
+                min={10.0}
+                max={1000.0}
+                step={1.0}
+                isLogarithmic
+                defaultValue={100.0}
+                color="#f59e0b"
+                onChange={v => updateParam('releaseMs', v)}
+                formatValue={v => `${v.toFixed(0)} ms`}
+              />
+            </div>
+          </div>
+
+          {/* Mobile Transient Designer Bar (Rendered cleanly below the 2x2 grid on small mobile viewports) */}
+          <div className="sm:hidden flex items-center justify-around bg-studio-950/80 border border-studio-800 rounded-xl p-2 mt-2">
+            <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+              Transient Designer:
+            </span>
             <RotaryKnob
-              label="Release"
-              value={params.releaseMs}
-              min={10.0}
-              max={1000.0}
-              step={1.0}
-              isLogarithmic
-              defaultValue={100.0}
-              color="#f59e0b"
-              onChange={v => updateParam('releaseMs', v)}
-              formatValue={v => `${v.toFixed(0)} ms`}
+              label="Attack"
+              value={params.transientAttack || 0}
+              min={-100}
+              max={100}
+              step={2}
+              defaultValue={0}
+              unit="%"
+              color="#f43f5e"
+              size="sm"
+              onChange={v => updateParam('transientAttack', v)}
+              formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
+            />
+            <RotaryKnob
+              label="Sustain"
+              value={params.transientSustain || 0}
+              min={-100}
+              max={100}
+              step={2}
+              defaultValue={0}
+              unit="%"
+              color="#10b981"
+              size="sm"
+              onChange={v => updateParam('transientSustain', v)}
+              formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
             />
           </div>
 

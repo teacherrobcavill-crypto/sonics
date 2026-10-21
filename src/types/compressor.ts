@@ -22,6 +22,9 @@ export interface CompressorParams {
   scMidActive: boolean;      // Mid band sidechain focus toggle (default: false)
   scMonitor: boolean;        // Sidechain listen / monitor switch (default: false)
   negativeRatio: boolean;    // Omnipressor-style negative ratio compression mode (default: false)
+  lookaheadMs: number;       // 0.0 to 10.0 ms lookahead buffer (default: 0.0 ms)
+  transientAttack: number;   // -100% to +100% transient attack shaping (default: 0)
+  transientSustain: number;  // -100% to +100% transient sustain shaping (default: 0)
 }
 
 export const DEFAULT_COMPRESSOR_PARAMS: CompressorParams = {
@@ -41,7 +44,10 @@ export const DEFAULT_COMPRESSOR_PARAMS: CompressorParams = {
   scMidGainDb: 0.0,
   scMidActive: false,
   scMonitor: false,
-  negativeRatio: false
+  negativeRatio: false,
+  lookaheadMs: 0.0,
+  transientAttack: 0,
+  transientSustain: 0
 };
 
 export interface CompressorTelemetry {
