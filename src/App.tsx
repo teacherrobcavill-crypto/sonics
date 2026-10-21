@@ -92,16 +92,18 @@ export const App: React.FC = () => {
   // Auto-restore active student profile from Cloud Firestore or localStorage on startup
   useEffect(() => {
     const activeId = getActiveStudentId();
-    if (activeId && !currentStudent) {
+    if (activeId) {
       const localProfiles = getStoredProfiles();
       if (localProfiles[activeId]) {
         handleStudentChanged(localProfiles[activeId]);
         setIsAuthInitializing(false);
-      } else if (isFirebaseReady()) {
+      }
+      // Always fetch authoritative profile from Cloud Firestore to sync any score adjustments or daily game-over locks
+      if (isFirebaseReady()) {
         cloudGetStudentProfile(activeId).then(profile => {
           if (profile && profile.createdAt && profile.createdAt >= PRE_LAUNCH_WIPE_TIMESTAMP) {
             handleStudentChanged(profile);
-          } else {
+          } else if (!localProfiles[activeId]) {
             setActiveStudentId(null);
           }
           setIsAuthInitializing(false);

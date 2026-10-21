@@ -10,9 +10,12 @@ Comprehensive Audit & Enforcement Script:
 
 import sys
 import json
+import ssl
 import urllib.request
 import urllib.error
 import datetime
+
+SSL_CTX = ssl._create_unverified_context()
 
 API_KEY = "AIzaSyC3lS45ktSv4Jou7cxv6Oi9gb8GKiNwN1Y"
 BASE_URL = "https://firestore.googleapis.com/v1/projects/soniceq-96d91/databases/(default)/documents"
@@ -53,7 +56,7 @@ def get_rank_title(score):
 def fetch_all_students():
     url = f"{BASE_URL}/students?pageSize=100&key={API_KEY}"
     req = urllib.request.Request(url)
-    with urllib.request.urlopen(req) as resp:
+    with urllib.request.urlopen(req, context=SSL_CTX) as resp:
         data = json.loads(resp.read().decode("utf-8"))
         return data.get("documents", [])
 
@@ -65,7 +68,7 @@ def update_firestore(student_id, updated_fields):
     payload = json.dumps({"fields": updated_fields}).encode("utf-8")
     req = urllib.request.Request(url, data=payload, method="PATCH", headers={"Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, context=SSL_CTX) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         error_msg = e.read().decode("utf-8")

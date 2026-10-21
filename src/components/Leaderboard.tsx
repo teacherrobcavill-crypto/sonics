@@ -150,7 +150,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
   const rawLeaderboard = useMemo(() => {
     const profiles = [...cloudProfiles];
 
-    // If current student is active, ensure their latest local profile is merged
+    // If current student is active, only merge their local profile if we don't have an authoritative cloud record yet
     if (
       currentStudent &&
       currentStudent.id !== 'participant_glyn_johns' &&
@@ -158,16 +158,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
       !currentStudent.name.toLowerCase().includes('glyn')
     ) {
       const idx = profiles.findIndex(p => p.id === currentStudent.id);
-      if (idx >= 0) {
-        profiles[idx] = {
-          ...profiles[idx],
-          stats: currentStudent.stats,
-          modeStats: currentStudent.modeStats || profiles[idx].modeStats,
-          avatarColor: currentStudent.avatarColor || profiles[idx].avatarColor,
-          cohortYear: currentStudent.cohortYear || profiles[idx].cohortYear,
-          email: currentStudent.email || profiles[idx].email
-        };
-      } else {
+      if (idx < 0) {
         profiles.push(currentStudent);
       }
     }

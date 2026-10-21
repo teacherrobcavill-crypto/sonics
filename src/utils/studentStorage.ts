@@ -606,6 +606,10 @@ export function getRemainingDailyRounds(student: StudentProfile | null, mode: Ga
   }
 
   const used = student.dailyUsage.rounds[mode as keyof DailyUsage['rounds']] || 0;
+  if (student.dailyUsage.gameOver?.[mode]) {
+    return { remaining: 0, used, max };
+  }
+
   const remaining = Math.max(0, max - used);
   return { remaining, used, max };
 }
@@ -726,10 +730,10 @@ export function recordStudentRound(
   return { updatedProfile: profile, remainingDaily: remaining };
 }
 
-export function markStudentGameOver(studentId: string, mode: GameMode): void {
+export function markStudentGameOver(studentId: string, mode: GameMode): StudentProfile | null {
   const profiles = getStoredProfiles();
   const profile = profiles[studentId];
-  if (!profile) return;
+  if (!profile) return null;
   const today = getTodayDateString();
   if (!profile.dailyUsage || profile.dailyUsage.date !== today) {
     profile.dailyUsage = {
@@ -743,6 +747,7 @@ export function markStudentGameOver(studentId: string, mode: GameMode): void {
   profile.dailyUsage.gameOver[mode] = true;
   profiles[studentId] = profile;
   saveStoredProfiles(profiles);
+  return profile;
 }
 
 export function addStudentBonusPoints(
