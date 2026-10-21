@@ -1392,7 +1392,8 @@ export class AudioEngine {
 
       const userGain = this.stemUserGainNodes[stem];
       if (userGain) {
-        const linearUser = Math.pow(10, (this.userStemBalance[stem] ?? 0) / 20);
+        const userDb = this.userStemBalance[stem] ?? 0;
+        const linearUser = userDb <= -12.0 ? 0.0 : Math.pow(10, userDb / 20);
         try {
           userGain.gain.cancelScheduledValues(startTime);
           userGain.gain.setValueAtTime(linearUser, startTime);
@@ -1511,7 +1512,8 @@ export class AudioEngine {
   public setUserStemGain(stem: StemType, db: number): void {
     this.userStemBalance[stem] = db;
     if (!this.ctx) return;
-    const linear = Math.pow(10, db / 20);
+    // When fader is pulled all the way down (-12 dB bottom), silence the channel completely (0.0 linear)
+    const linear = db <= -12.0 ? 0.0 : Math.pow(10, db / 20);
     const node = this.stemUserGainNodes[stem];
     if (node) {
       try {
@@ -1538,7 +1540,10 @@ export class AudioEngine {
       sum += data[i];
     }
     const avg = sum / (data.length * 255);
-    return Math.min(1.0, avg * 2.5);
+    const db = this.activeListeningMode === 'target' ? (this.targetStemBalance[stem] ?? 0) : (this.userStemBalance[stem] ?? 0);
+    if (this.activeListeningMode === 'user' && db <= -12.0) return 0;
+    const gainScale = Math.pow(10, db / 20);
+    return Math.min(1.0, avg * 2.5 * gainScale);
   }
 
   public resetStemMix(): void {
