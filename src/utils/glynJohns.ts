@@ -56,33 +56,33 @@ const MODE_AVERAGES: Record<GameMode, ModeDailyAverage> = {
     bestStreak: 3
   },
   pan_master: {
-    regularPoints: 1400,
+    regularPoints: 1200,
     regularRounds: 15,
-    holidayPoints: 700,
+    holidayPoints: 600,
     holidayRounds: 8,
     averageAccuracyOctaves: 0.28,
     bestStreak: 3
   },
   tye_match: {
-    regularPoints: 1100,
+    regularPoints: 500,
     regularRounds: 10,
-    holidayPoints: 550,
+    holidayPoints: 250,
     holidayRounds: 5,
     averageAccuracyOctaves: 0.32,
     bestStreak: 2
   },
   filter_doctor: {
-    regularPoints: 700,
+    regularPoints: 600,
     regularRounds: 12,
-    holidayPoints: 350,
+    holidayPoints: 300,
     holidayRounds: 6,
     averageAccuracyOctaves: 0.38,
     bestStreak: 2
   },
   db_master: {
-    regularPoints: 300,
+    regularPoints: 100,
     regularRounds: 8,
-    holidayPoints: 150,
+    holidayPoints: 50,
     holidayRounds: 4,
     averageAccuracyOctaves: 0.45,
     bestStreak: 2
@@ -266,8 +266,12 @@ export function mergeGlynJohnsIntoLeaderboard(
 ): LeaderboardEntry[] {
   const glynEntry = getGlynJohnsLeaderboardEntry(scope, activeStudentId, targetDate);
 
-  // Remove existing Glyn Johns if already in the list
-  const filtered = entries.filter(e => e.id !== GLYN_JOHNS_ID && e.name.toLowerCase() !== GLYN_JOHNS_NAME.toLowerCase());
+  // Remove any existing Glyn Johns or similar simulation entries
+  const filtered = entries.filter(e => 
+    e.id !== GLYN_JOHNS_ID && 
+    !e.id.toLowerCase().includes('glyn') && 
+    !e.name.toLowerCase().includes('glyn')
+  );
 
   // Add the newly calculated Glyn Johns entry
   filtered.push(glynEntry);

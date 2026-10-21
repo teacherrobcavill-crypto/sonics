@@ -150,7 +150,7 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({
     baseLeaderboard = localLeaderboard;
   } else {
     baseLeaderboard = [...cloudEntries];
-    if (currentStudent) {
+    if (currentStudent && currentStudent.id !== 'participant_glyn_johns' && !currentStudent.id.toLowerCase().includes('glyn') && !currentStudent.name.toLowerCase().includes('glyn')) {
       const studentStats = selectedGame === 'all'
         ? currentStudent.stats
         : (currentStudent.modeStats?.[selectedGame as GameMode] || getStudentModeStats(currentStudent, selectedGame as GameMode));

@@ -177,8 +177,15 @@ export function getStoredProfiles(): Record<string, StudentProfile> {
 
     for (const id of Object.keys(parsed)) {
       const p = parsed[id];
-      // Strip legacy mock classmates and any pre-launch test accounts
-      if (id.startsWith("classmate_") || !p.createdAt || p.createdAt < PRE_LAUNCH_WIPE_TIMESTAMP) {
+      // Strip legacy mock classmates, any pre-launch test accounts, and simulated benchmark bot
+      if (
+        id.startsWith("classmate_") ||
+        id === GLYN_JOHNS_ID ||
+        id.toLowerCase().includes("glyn") ||
+        (p.name && p.name.toLowerCase().includes("glyn")) ||
+        !p.createdAt ||
+        p.createdAt < PRE_LAUNCH_WIPE_TIMESTAMP
+      ) {
         delete parsed[id];
         modified = true;
       }
@@ -187,7 +194,7 @@ export function getStoredProfiles(): Record<string, StudentProfile> {
     if (modified) {
       localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(parsed));
       const activeId = localStorage.getItem(STORAGE_KEY_CURRENT_USER);
-      if (activeId && !parsed[activeId]) {
+      if (activeId && (!parsed[activeId] || activeId === GLYN_JOHNS_ID || activeId.toLowerCase().includes("glyn"))) {
         localStorage.removeItem(STORAGE_KEY_CURRENT_USER);
       }
     }
