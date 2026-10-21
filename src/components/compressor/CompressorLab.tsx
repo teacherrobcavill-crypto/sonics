@@ -607,11 +607,11 @@ export const CompressorLab: React.FC<CompressorLabProps> = ({
               {/* Transient Designer Floating Bridge (Desktop / Tablet) */}
               <div
                 className="hidden sm:flex absolute right-full top-1/2 -translate-y-1/2 translate-x-1/2 z-20 items-center justify-center gap-2 bg-studio-950/95 border border-studio-800/90 rounded-2xl px-2.5 py-1.5 shadow-xl shadow-black/60 pointer-events-auto"
-                style={{ width: '138px' }}
+                style={{ width: '144px' }}
               >
                 <div className="flex flex-col items-center">
                   <RotaryKnob
-                    label="TD ATTACK"
+                    label="Transient"
                     value={params.transientAttack || 0}
                     min={-100}
                     max={100}
@@ -629,7 +629,7 @@ export const CompressorLab: React.FC<CompressorLabProps> = ({
 
                 <div className="flex flex-col items-center">
                   <RotaryKnob
-                    label="TD SUST"
+                    label="Sustain"
                     value={params.transientSustain || 0}
                     min={-100}
                     max={100}
@@ -666,7 +666,7 @@ export const CompressorLab: React.FC<CompressorLabProps> = ({
               Transient Designer:
             </span>
             <RotaryKnob
-              label="Attack"
+              label="Transient"
               value={params.transientAttack || 0}
               min={-100}
               max={100}

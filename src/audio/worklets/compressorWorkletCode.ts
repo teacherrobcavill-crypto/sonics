@@ -72,6 +72,7 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
     // Ballistics and envelope state
     this.envelopeDb = 0.0;
     this.preGainEnergy300 = 0.0;
+    this.postGainEnergy300 = 0.0;
     this.avgGr300 = 0.0;
     this.currentGrDb = 0.0;
     this.grMinInInterval = 0.0;
@@ -327,23 +328,41 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
 
     let blockGrAccum = 0.0;
 
-    // Auto-gain dynamic calculation
+    // Auto-gain dynamic calculation: matches perceived loudness taking into account
+    // compression depth, negative ratio transient inversion, and transient designer shaping.
     let autoGainLinear = 1.0;
-    if (this.autoGain && this.avgGr300 > 0.01) {
-      // Attack efficiency factor: fast attack catches 100% of transients, slow lets spikes through
-      const etaAtt = 1.12 - 0.69 * (Math.log10(Math.max(0.1, this.attackMs)) / 3.0);
-      // Release density factor: slow release clamps continuously
-      const etaRel = Math.pow(Math.max(10.0, this.releaseMs) / 100.0, 0.22);
-      const predictedComp = this.avgGr300 * Math.max(0.4, Math.min(1.6, etaAtt * etaRel));
-      this.autoGainTargetDb = Math.min(18.0, predictedComp * 0.90);
+    if (this.autoGain) {
+      if (this.preGainEnergy300 > 1e-5 && this.postGainEnergy300 > 1e-7) {
+        // True energy ratio between dry uncompressed input and shaped processed output
+        const energyRatio = this.preGainEnergy300 / this.postGainEnergy300;
+        const deficitDb = 10.0 * Math.log10(Math.max(1e-4, energyRatio));
 
-      // Critically damped glide: smooth 150ms time constant
-      const diff = this.autoGainTargetDb - this.autoGainCurrentDb;
-      const step = Math.sign(diff) * Math.min(Math.abs(diff * 0.06), 0.50 / (this.fs / 60));
-      this.autoGainCurrentDb += step;
+        // When negative ratio or transient shaping causes heavy ducking or huge boosts,
+        // deficitDb accurately reflects the loudness difference.
+        // Also combine with feed-forward GR expectation for fast transient recovery:
+        const etaAtt = 1.12 - 0.69 * (Math.log10(Math.max(0.1, this.attackMs)) / 3.0);
+        const etaRel = Math.pow(Math.max(10.0, this.releaseMs) / 100.0, 0.22);
+        const predictedComp = this.avgGr300 * Math.max(0.4, Math.min(1.6, etaAtt * etaRel));
+
+        // Blend 70% true integrated energy matching + 30% feedforward GR prediction
+        const blendedTarget = 0.70 * deficitDb + 0.30 * predictedComp;
+        this.autoGainTargetDb = Math.max(-12.0, Math.min(24.0, blendedTarget));
+      } else if (this.avgGr300 > 0.01) {
+        const etaAtt = 1.12 - 0.69 * (Math.log10(Math.max(0.1, this.attackMs)) / 3.0);
+        const etaRel = Math.pow(Math.max(10.0, this.releaseMs) / 100.0, 0.22);
+        this.autoGainTargetDb = Math.min(24.0, this.avgGr300 * Math.max(0.4, Math.min(1.6, etaAtt * etaRel)));
+      } else {
+        this.autoGainTargetDb *= 0.98;
+      }
+
+      // Smooth glide (150ms time constant) to prevent clicking or rapid pumping
+      const alphaGlide = Math.exp(-numSamples / (0.150 * this.fs));
+      this.autoGainCurrentDb = alphaGlide * this.autoGainCurrentDb + (1.0 - alphaGlide) * this.autoGainTargetDb;
       autoGainLinear = Math.pow(10.0, this.autoGainCurrentDb / 20.0);
     } else {
-      this.autoGainCurrentDb *= 0.92;
+      this.autoGainTargetDb = 0.0;
+      this.autoGainCurrentDb *= 0.95;
+      autoGainLinear = Math.pow(10.0, this.autoGainCurrentDb / 20.0);
     }
 
     for (let i = 0; i < numSamples; ++i) {
@@ -411,9 +430,8 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       this.grMaxInInterval = Math.max(this.grMaxInInterval, this.envelopeDb);
       this.avgGr300 = this.alpha300 * this.avgGr300 + (1.0 - this.alpha300) * Math.abs(this.envelopeDb);
 
-      // 6. Total VCA Gain
+      // 6. Base VCA Gain Reduction (Linear factor)
       const grLinear = Math.pow(10.0, this.envelopeDb / 20.0);
-      const vcaGain = grLinear * autoGainLinear * this.makeupGainLinear;
 
       // 7. Parallel Blender (NY style) & Sidechain Monitor Routing
       let resL, resR;
@@ -422,8 +440,8 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         resL = scL;
         resR = scR;
       } else {
-        const wetL = delayedL * vcaGain;
-        const wetR = delayedR * vcaGain;
+        const wetL = delayedL * grLinear;
+        const wetR = delayedR * grLinear;
 
         if (this.mixLinear < 0.999) {
           // Parallel blend: dry uncompressed delayed + wet compressed
@@ -436,7 +454,7 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       }
 
       // 8. Transient Designer (Attack & Sustain Envelope Differential Processing)
-      if (Math.abs(this.transientAttack) > 0.01 || Math.abs(this.transientSustain) > 0.01) {
+      if (Math.abs(this.transientAttack) > 0.005 || Math.abs(this.transientSustain) > 0.005) {
         const monoAbs = 0.5 * (Math.abs(resL) + Math.abs(resR));
         this.tdEnvFast = this.alphaTdFast * this.tdEnvFast + (1.0 - this.alphaTdFast) * monoAbs;
         this.tdEnvSlow = this.alphaTdSlow * this.tdEnvSlow + (1.0 - this.alphaTdSlow) * monoAbs;
@@ -444,7 +462,13 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
 
         // Differential onset: fast envelope minus slow envelope captures initial attack burst
         const attackDiff = Math.max(0.0, this.tdEnvFast - this.tdEnvSlow);
-        const attackGainMod = 1.0 + (this.transientAttack * (attackDiff / (this.tdEnvSlow + 1e-4)) * 1.5);
+        const normalizedDiff = attackDiff / (this.tdEnvSlow + 1e-4);
+
+        // Scaled non-linear attack response: first quarter turn (|a| <= 0.25) is subtle (~8%),
+        // ramping up progressively to full punch or cut across the remaining 75% of travel.
+        const signA = Math.sign(this.transientAttack);
+        const shapedAttack = signA * Math.pow(Math.abs(this.transientAttack), 1.8);
+        const attackGainMod = 1.0 + (shapedAttack * normalizedDiff * 1.5);
 
         // Sustain modulation: slow envelope sustains when signal is present
         const sustainGainMod = 1.0 + (this.transientSustain * (this.tdEnvSust / (this.tdEnvFast + 1e-4)) * 0.7);
@@ -454,7 +478,18 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         resR *= tdGain;
       }
 
-      // 9. Failsafe Ear-Protection Ceiling (-0.5 dBFS / 0.95 amplitude)
+      // Track uncompensated processed energy for Auto Level calculation
+      const pwrPost = 0.5 * (resL * resL + resR * resR);
+      this.postGainEnergy300 = this.alpha300 * this.postGainEnergy300 + (1.0 - this.alpha300) * pwrPost;
+
+      // 9. Apply Auto-Gain and Manual Makeup Gain
+      if (!this.scMonitor) {
+        const totalGain = (this.autoGain ? autoGainLinear : 1.0) * this.makeupGainLinear;
+        resL *= totalGain;
+        resR *= totalGain;
+      }
+
+      // 10. Failsafe Ear-Protection Ceiling (-0.5 dBFS / 0.95 amplitude)
       resL = Math.max(-0.95, Math.min(0.95, resL));
       resR = Math.max(-0.95, Math.min(0.95, resR));
 
