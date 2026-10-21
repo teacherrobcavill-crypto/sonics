@@ -18,6 +18,7 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
     this.currentInputGainDb = 0.0;
     this.threshold = -18.0;
     this.ratio = 4.0;
+    this.negativeRatio = false;
     this.slope = 1.0 / 4.0;
     this.kneeWidth = 4.0;
     this.alphaAtt = Math.exp(-1.0 / (0.010 * 44100));
@@ -78,8 +79,17 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       if (msg.type === 'setParameters') {
         const p = msg.params;
         this.threshold = p.thresholdDb;
-        this.ratio = Math.max(1.0, p.ratio);
-        this.slope = (this.ratio >= 50.0) ? 0.0 : (1.0 / this.ratio);
+        this.negativeRatio = Boolean(p.negativeRatio);
+        this.ratio = Math.max(1.0, Math.abs(p.ratio));
+
+        if (this.negativeRatio) {
+          // Negative Ratio Compression: slope = -1.0 / ratio (< 0)
+          // Levels exceeding threshold drive output downward below threshold (transient inversion)
+          this.slope = -1.0 / this.ratio;
+        } else {
+          this.slope = (this.ratio >= 50.0) ? 0.0 : (1.0 / this.ratio);
+        }
+
         this.kneeWidth = Math.max(0.0, Math.min(24.0, p.kneeDb || 4.0));
         if (p.makeupGainDb !== undefined) {
           this.makeupGainDb = Math.max(-12.0, Math.min(24.0, p.makeupGainDb));
@@ -216,21 +226,28 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
 
   computeTargetGainReduction(sidechainDb) {
     const halfKnee = this.kneeWidth * 0.5;
+    let gr = 0.0;
+
     if (this.kneeWidth <= 0.001) {
       if (sidechainDb > this.threshold) {
-        return (this.slope - 1.0) * (sidechainDb - this.threshold);
+        gr = (this.slope - 1.0) * (sidechainDb - this.threshold);
       }
-      return 0.0;
+    } else {
+      const lowerBound = this.threshold - halfKnee;
+      const upperBound = this.threshold + halfKnee;
+
+      if (sidechainDb > lowerBound) {
+        if (sidechainDb >= upperBound) {
+          gr = (this.slope - 1.0) * (sidechainDb - this.threshold);
+        } else {
+          const delta = sidechainDb - lowerBound;
+          gr = (this.slope - 1.0) * (delta * delta) / (2.0 * this.kneeWidth);
+        }
+      }
     }
 
-    const lowerBound = this.threshold - halfKnee;
-    const upperBound = this.threshold + halfKnee;
-
-    if (sidechainDb <= lowerBound) return 0.0;
-    if (sidechainDb >= upperBound) return (this.slope - 1.0) * (sidechainDb - this.threshold);
-
-    const delta = sidechainDb - lowerBound;
-    return (this.slope - 1.0) * (delta * delta) / (2.0 * this.kneeWidth);
+    // Safety floor on maximum gain reduction: clamp to -48.0 dB to prevent complete silence on spikes
+    return Math.max(-48.0, gr);
   }
 
   process(inputs, outputs) {

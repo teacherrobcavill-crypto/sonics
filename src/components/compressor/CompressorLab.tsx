@@ -579,9 +579,14 @@ export const CompressorLab: React.FC<CompressorLabProps> = ({
               max={100.0}
               isRatioCurve
               defaultValue={4.0}
-              color="#38bdf8"
+              color={params.negativeRatio ? "#c084fc" : "#38bdf8"}
               onChange={v => updateParam('ratio', v)}
-              formatValue={v => (v >= 50 ? '∞:1 Limit' : `${v.toFixed(1)}:1`)}
+              formatValue={v => {
+                if (params.negativeRatio) {
+                  return `-${v.toFixed(1)}:1 Inv`;
+                }
+                return v >= 50 ? '∞:1 Limit' : `${v.toFixed(1)}:1`;
+              }}
             />
 
             <RotaryKnob

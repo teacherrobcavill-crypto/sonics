@@ -9,7 +9,8 @@ import {
   Filter,
   Layers,
   Activity,
-  Radio
+  Radio,
+  Zap
 } from 'lucide-react';
 
 interface AdvancedCompressorControlsProps {
@@ -75,6 +76,14 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
               MAKEUP: {(params.makeupGainDb || 0) > 0 ? '+' : ''}{(params.makeupGainDb || 0).toFixed(1)}dB
             </span>
 
+            {/* Negative Ratio Pill */}
+            {params.negativeRatio && (
+              <span className="px-2 py-0.5 rounded-md bg-purple-500/25 text-purple-300 border border-purple-400 font-bold animate-pulse flex items-center gap-1 shadow-[0_0_8px_rgba(192,132,252,0.4)]">
+                <Zap className="w-2.5 h-2.5 text-purple-300" />
+                NEG: -{params.ratio.toFixed(1)}:1
+              </span>
+            )}
+
             {/* Mid Pill */}
             <span className={`px-2 py-0.5 rounded-md border ${
               params.scMidActive && Math.abs(params.scMidGainDb) > 0.05
@@ -113,7 +122,7 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
       {isOpen && (
         <div className="mt-3 p-4 sm:p-5 rounded-2xl bg-studio-950/80 border border-studio-800/90 shadow-2xl space-y-5 animate-in fade-in duration-200">
           
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-stretch">
             
             {/* Section A: Parallel Blender (New York Style) */}
             <div className="md:col-span-3 bg-studio-900/60 border border-studio-800 rounded-xl p-3 flex flex-col justify-between space-y-3">
@@ -251,12 +260,76 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
               </div>
 
               <div className="text-[9.5px] text-slate-400 leading-tight">
-                Post-VCA manual gain boost or cut (-12dB to +24dB) to match perceived volume.
+                Post-VCA manual gain boost or cut (-12dB to +24dB).
               </div>
             </div>
 
-            {/* Section C: Sidechain HPF & Sweepable Mid Band */}
-            <div className="md:col-span-4 bg-studio-900/60 border border-studio-800 rounded-xl p-3 flex flex-col justify-between space-y-3">
+            {/* Section C: Negative Ratio (Omnipressor / Invert Dynamics) */}
+            <div className="md:col-span-2 bg-studio-900/60 border border-studio-800 rounded-xl p-3 flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between border-b border-studio-800 pb-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
+                  <Zap className="w-3.5 h-3.5 text-purple-400" />
+                  <span>NEG RATIO</span>
+                </div>
+                <span className={`text-[10px] font-bold ${params.negativeRatio ? 'text-purple-400' : 'text-slate-500'}`}>
+                  {params.negativeRatio ? 'INVERT' : 'OFF'}
+                </span>
+              </div>
+
+              <div className="flex flex-col items-center justify-center space-y-2 py-1">
+                {/* Master Negative Ratio Latching Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => onUpdateParam('negativeRatio', !params.negativeRatio)}
+                  className={`w-full py-2 px-2 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    params.negativeRatio
+                      ? 'bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-600/40 ring-1 ring-purple-300'
+                      : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-purple-300 hover:border-purple-500/40'
+                  }`}
+                  title="Inverts dynamic transfer slope: loud signals drop BELOW threshold (Omnipressor effect)"
+                >
+                  <Zap className={`w-3.5 h-3.5 ${params.negativeRatio ? 'fill-current text-purple-200' : 'text-purple-400'}`} />
+                  <span>{params.negativeRatio ? 'INVERT ON' : 'ENABLE NEG'}</span>
+                </button>
+
+                {/* Quick Negative Ratio Target Presets */}
+                <div className="grid grid-cols-3 gap-1 w-full">
+                  {[
+                    { label: '-1:1', val: 1.0 },
+                    { label: '-2:1', val: 2.0 },
+                    { label: '-4:1', val: 4.0 }
+                  ].map(preset => (
+                    <button
+                      key={preset.label}
+                      type="button"
+                      onClick={() => {
+                        onUpdateParam('negativeRatio', true);
+                        onUpdateParam('ratio', preset.val);
+                      }}
+                      className={`py-1 px-1 rounded text-[9px] font-bold border transition-all cursor-pointer text-center ${
+                        params.negativeRatio && Math.abs(params.ratio - preset.val) < 0.1
+                          ? 'bg-purple-500/30 text-purple-200 border-purple-400 ring-1 ring-purple-400'
+                          : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
+                      }`}
+                      title={`Set ratio to -${preset.val.toFixed(1)}:1`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="text-[9.5px] text-slate-400 leading-tight">
+                {params.negativeRatio ? (
+                  <span className="text-purple-300 font-bold">Loud peaks driven below threshold!</span>
+                ) : (
+                  <span>Inverts dynamics for reverse transient ducking.</span>
+                )}
+              </div>
+            </div>
+
+            {/* Section D: Sidechain HPF & Sweepable Mid Band */}
+            <div className="md:col-span-3 bg-studio-900/60 border border-studio-800 rounded-xl p-3 flex flex-col justify-between space-y-3">
               <div className="flex items-center justify-between border-b border-studio-800 pb-2">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
                   <Filter className="w-3.5 h-3.5 text-emerald-400" />
@@ -265,7 +338,7 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
                 <span className="text-[10px] text-slate-400">DETECTOR</span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 py-1 items-center justify-items-center">
+              <div className="grid grid-cols-3 gap-1.5 py-1 items-center justify-items-center">
                 
                 {/* 1. HPF Filter (up to 150 Hz) */}
                 <div className="flex flex-col items-center space-y-1.5 w-full">
@@ -345,44 +418,40 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
               </div>
 
               <div className="text-[9.5px] text-slate-400 leading-tight">
-                HPF protects bass from pumping. Mid targets harshness.
+                HPF protects bass. Mid focuses harshness.
               </div>
             </div>
 
-            {/* Section D: Sidechain Monitor / Audition Switch */}
-            <div className="md:col-span-2 bg-studio-900/60 border border-studio-800 rounded-xl p-3 flex flex-col justify-between space-y-3">
-              <div className="flex items-center justify-between border-b border-studio-800 pb-2">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
-                  <Headphones className="w-3.5 h-3.5 text-amber-400" />
-                  <span>AUDITION</span>
+            {/* Section E: Sidechain Monitor / Audition Switch */}
+            <div className="md:col-span-1 bg-studio-900/60 border border-studio-800 rounded-xl p-2.5 flex flex-col justify-between space-y-2">
+              <div className="flex items-center justify-between border-b border-studio-800 pb-1.5">
+                <div className="flex items-center gap-1 text-[11px] font-bold text-slate-200">
+                  <Headphones className="w-3 h-3 text-amber-400" />
+                  <span>SC</span>
                 </div>
-                <span className="text-[10px] text-amber-400/80 font-bold">MONITOR</span>
               </div>
 
               {/* Latching Audition Button */}
-              <div className="flex flex-col items-center justify-center py-1">
+              <div className="flex flex-col items-center justify-center py-0.5">
                 <button
                   type="button"
                   onClick={() => onUpdateParam('scMonitor', !params.scMonitor)}
-                  className={`w-full py-3 px-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
+                  className={`w-full py-2.5 px-1 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
                     params.scMonitor
                       ? 'bg-amber-500/25 border-amber-400 text-amber-300 ring-2 ring-amber-400/50 shadow-lg shadow-amber-500/30'
                       : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white hover:border-slate-700'
                   }`}
+                  title="Route sidechain detector filter path to output for listening"
                 >
-                  <Activity className={`w-4 h-4 ${params.scMonitor ? 'animate-bounce text-amber-300' : 'text-slate-500'}`} />
-                  <span className="text-[10px] font-bold tracking-wide text-center">
-                    {params.scMonitor ? 'AUDITION ON' : 'MONITOR SC'}
+                  <Activity className={`w-3.5 h-3.5 ${params.scMonitor ? 'animate-bounce text-amber-300' : 'text-slate-500'}`} />
+                  <span className="text-[9px] font-bold tracking-tight text-center leading-none">
+                    {params.scMonitor ? 'ON' : 'LISTEN'}
                   </span>
                 </button>
               </div>
 
-              <div className="text-[9px] text-amber-400/90 leading-tight">
-                {params.scMonitor ? (
-                  <span className="font-bold">⚠️ Listening to SC filter!</span>
-                ) : (
-                  <span>Route SC to output.</span>
-                )}
+              <div className="text-[8.5px] text-amber-400/90 leading-tight text-center">
+                {params.scMonitor ? 'Auditioning' : 'Monitor'}
               </div>
             </div>
 

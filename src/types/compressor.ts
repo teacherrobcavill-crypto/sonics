@@ -21,6 +21,7 @@ export interface CompressorParams {
   scMidGainDb: number;       // -12.0 to +12.0 dB (default: 0.0 dB)
   scMidActive: boolean;      // Mid band sidechain focus toggle (default: false)
   scMonitor: boolean;        // Sidechain listen / monitor switch (default: false)
+  negativeRatio: boolean;    // Omnipressor-style negative ratio compression mode (default: false)
 }
 
 export const DEFAULT_COMPRESSOR_PARAMS: CompressorParams = {
@@ -39,7 +40,8 @@ export const DEFAULT_COMPRESSOR_PARAMS: CompressorParams = {
   scMidFreq: 2500.0,
   scMidGainDb: 0.0,
   scMidActive: false,
-  scMonitor: false
+  scMonitor: false,
+  negativeRatio: false
 };
 
 export interface CompressorTelemetry {
