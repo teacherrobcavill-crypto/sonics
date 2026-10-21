@@ -15,7 +15,8 @@ import {
   Volume2,
   VolumeX,
   Palette,
-  Gauge
+  Gauge,
+  AlertCircle
 } from 'lucide-react';
 import { GameMode, RoundResult, UserStats, AudioSourceType } from './types';
 import { audioEngine } from './audio/AudioEngine';
@@ -31,6 +32,7 @@ import { SessionStats } from './components/SessionStats';
 import { ScoreFlashOverlay } from './components/ScoreFlashOverlay';
 import { Leaderboard } from './components/Leaderboard';
 import { StudentAuthModal } from './components/StudentAuthModal';
+import { StudioWelcomeGate } from './components/StudioWelcomeGate';
 import { AllGamesCompletedModal } from './components/AllGamesCompletedModal';
 import { getRankTitle } from './utils/frequencies';
 import {
@@ -78,6 +80,15 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // Check whether an authentication lookup is currently underway
+  const [isAuthInitializing, setIsAuthInitializing] = useState<boolean>(() => {
+    const activeId = getActiveStudentId();
+    return Boolean(activeId && !getActiveStudent());
+  });
+
+  // Track whether the visitor has explicitly chosen to bypass login and play as Guest
+  const [isGuestMode, setIsGuestMode] = useState<boolean>(false);
+
   // Auto-restore active student profile from Cloud Firestore or localStorage on startup
   useEffect(() => {
     const activeId = getActiveStudentId();
@@ -85,6 +96,7 @@ export const App: React.FC = () => {
       const localProfiles = getStoredProfiles();
       if (localProfiles[activeId]) {
         handleStudentChanged(localProfiles[activeId]);
+        setIsAuthInitializing(false);
       } else if (isFirebaseReady()) {
         cloudGetStudentProfile(activeId).then(profile => {
           if (profile && profile.createdAt && profile.createdAt >= PRE_LAUNCH_WIPE_TIMESTAMP) {
@@ -92,8 +104,15 @@ export const App: React.FC = () => {
           } else {
             setActiveStudentId(null);
           }
+          setIsAuthInitializing(false);
+        }).catch(() => {
+          setIsAuthInitializing(false);
         });
+      } else {
+        setIsAuthInitializing(false);
       }
+    } else {
+      setIsAuthInitializing(false);
     }
   }, []);
 
@@ -244,6 +263,7 @@ export const App: React.FC = () => {
 
   const handleStudentChanged = (student: StudentProfile | null) => {
     setCurrentStudent(student);
+    setIsGuestMode(false);
     if (student) {
       saveStudentProfile(student);
       setStats({ ...student.stats });
@@ -393,9 +413,56 @@ export const App: React.FC = () => {
     setHistory([]);
   };
 
+  // If verifying remembered session on startup, render brief console loader
+  if (isAuthInitializing) {
+    return (
+      <div className="min-h-screen bg-studio-950 flex flex-col items-center justify-center p-4">
+        <div className="w-8 h-8 border-2 border-studio-accent border-t-transparent rounded-full animate-spin mb-4"></div>
+        <div className="text-xs font-mono uppercase tracking-widest text-slate-400">Initializing Sonics Console...</div>
+      </div>
+    );
+  }
+
+  // If user is not authenticated and hasn't chosen guest mode, present the Studio Welcome Gate
+  if (!currentStudent && !isGuestMode) {
+    return (
+      <StudioWelcomeGate
+        onAuthenticated={(student) => {
+          handleStudentChanged(student);
+          setIsGuestMode(false);
+        }}
+        onContinueAsGuest={() => {
+          setIsGuestMode(true);
+        }}
+        onThemeChanged={(theme) => {
+          setCurrentTheme(theme);
+          saveTheme(theme);
+        }}
+        isMobile={isMobile}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-studio-950 text-slate-100 flex flex-col font-sans">
       
+      {/* Persistent Warning Banner for Unranked Guest Play */}
+      {isGuestMode && !currentStudent && (
+        <div className="bg-amber-500/15 border-b border-amber-500/30 px-3 py-2 text-center text-xs font-mono text-amber-300 flex items-center justify-center space-x-2 shrink-0">
+          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+          <span>
+            <strong>Unranked Guest Mode:</strong> Your scores and progress are NOT being saved to the class leaderboard.
+          </span>
+          <button
+            type="button"
+            onClick={() => setIsAuthModalOpen(true)}
+            className="ml-2 px-2.5 py-0.5 rounded-lg bg-amber-400 text-studio-950 font-bold hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+          >
+            Sign In / Register
+          </button>
+        </div>
+      )}
+
       {/* Top Studio Header */}
       <header className="border-b border-studio-800/80 bg-studio-900/80 backdrop-blur-md sticky top-0 z-30">
         <div className={`${isMobile ? 'max-w-md px-2.5 h-14' : 'max-w-7xl px-4 sm:px-6 h-16'} mx-auto flex items-center justify-between gap-1.5`}>
