@@ -76,11 +76,22 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
               MAKEUP: {(params.makeupGainDb || 0) > 0 ? '+' : ''}{(params.makeupGainDb || 0).toFixed(1)}dB
             </span>
 
+            {/* Lookahead Status Pill */}
+            <span className={`px-2 py-0.5 rounded-md border font-bold ${
+              params.lookaheadMs > 0
+                ? params.negativeRatio
+                  ? 'bg-purple-500/25 text-purple-300 border-purple-400'
+                  : 'bg-cyan-500/20 text-cyan-300 border-cyan-400'
+                : 'bg-studio-900 text-slate-500 border-studio-800'
+            }`}>
+              LOOKAHEAD: {params.lookaheadMs > 0 ? `${params.lookaheadMs.toFixed(1)}ms` : 'OFF'}
+            </span>
+
             {/* Negative Ratio Pill */}
             {params.negativeRatio && (
               <span className="px-2 py-0.5 rounded-md bg-purple-500/25 text-purple-300 border border-purple-400 font-bold animate-pulse flex items-center gap-1 shadow-[0_0_8px_rgba(192,132,252,0.4)]">
                 <Zap className="w-2.5 h-2.5 text-purple-300" />
-                NEG: -{params.ratio.toFixed(1)}:1{params.lookaheadMs > 0 ? ` (${params.lookaheadMs.toFixed(1)}ms)` : ''}
+                NEG: -{params.ratio.toFixed(1)}:1
               </span>
             )}
 
@@ -275,31 +286,82 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
               </div>
             </div>
 
-            {/* Section C: Negative Ratio (Omnipressor / Invert Dynamics) + Lookahead */}
-            <div className="md:col-span-2 bg-studio-900/60 border border-studio-800 rounded-xl p-3 flex flex-col justify-between space-y-2">
+            {/* Section C: Lookahead & Negative Ratio Compression Mode */}
+            <div className={`md:col-span-2 rounded-xl p-3 flex flex-col justify-between space-y-2 border transition-all ${
+              params.negativeRatio
+                ? 'bg-purple-950/40 border-purple-500/60 shadow-lg shadow-purple-950/50'
+                : 'bg-studio-900/60 border-studio-800'
+            }`}>
               <div className="flex items-center justify-between border-b border-studio-800 pb-1.5">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
-                  <Zap className="w-3.5 h-3.5 text-purple-400" />
-                  <span>NEG RATIO</span>
+                  <Zap className={`w-3.5 h-3.5 ${params.negativeRatio ? 'text-purple-400' : 'text-cyan-400'}`} />
+                  <span>{params.negativeRatio ? 'NEG RATIO' : 'LOOKAHEAD'}</span>
                 </div>
-                <span className={`text-[10px] font-bold ${params.negativeRatio ? 'text-purple-400' : 'text-slate-500'}`}>
-                  {params.negativeRatio ? 'INVERT' : 'OFF'}
+                <span className={`text-[10px] font-bold ${
+                  params.negativeRatio
+                    ? 'text-purple-400'
+                    : params.lookaheadMs > 0
+                    ? 'text-cyan-400'
+                    : 'text-slate-500'
+                }`}>
+                  {params.negativeRatio ? 'INVERT' : params.lookaheadMs > 0 ? `${params.lookaheadMs.toFixed(1)}ms` : 'NORMAL'}
                 </span>
               </div>
 
               <div className="flex flex-col items-center justify-center space-y-1.5 py-0.5">
+                {/* Lookahead Function Dial & Presets (Operates as normal compressor lookahead when negative ratio is off, or Omnipressor lookahead when on) */}
+                <div className="w-full flex items-center justify-between gap-1 pb-1.5 border-b border-studio-800/80">
+                  <RotaryKnob
+                    label="Lookahead"
+                    value={params.lookaheadMs || 0}
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    defaultValue={0}
+                    unit="ms"
+                    color={params.negativeRatio ? '#c084fc' : '#00f0ff'}
+                    size="sm"
+                    onChange={(val) => onUpdateParam('lookaheadMs', val)}
+                    formatValue={(v) => (v === 0 ? '0ms (Off)' : `${v.toFixed(1)}ms`)}
+                  />
+
+                  {/* Lookahead Quick Buttons */}
+                  <div className="flex flex-col gap-0.5">
+                    {[
+                      { label: '0ms', val: 0 },
+                      { label: '2ms', val: 2 },
+                      { label: '5ms', val: 5 }
+                    ].map(btn => (
+                      <button
+                        key={btn.label}
+                        type="button"
+                        onClick={() => onUpdateParam('lookaheadMs', btn.val)}
+                        className={`px-1.5 py-0.5 rounded text-[8px] font-bold border transition-all cursor-pointer ${
+                          (params.lookaheadMs || 0) === btn.val
+                            ? params.negativeRatio
+                              ? 'bg-purple-500/30 text-purple-200 border-purple-400'
+                              : 'bg-cyan-500/30 text-cyan-200 border-cyan-400'
+                            : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        {btn.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Master Negative Ratio Latching Toggle Button */}
                 <button
                   type="button"
                   onClick={() => onUpdateParam('negativeRatio', !params.negativeRatio)}
-                  className={`w-full py-1.5 px-2 rounded-xl border text-[10px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  className={`w-full py-1 px-2 rounded-xl border text-[9.5px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     params.negativeRatio
-                      ? 'bg-purple-600 text-white border-purple-400 shadow-lg shadow-purple-600/40 ring-1 ring-purple-300'
+                      ? 'bg-purple-600 text-white border-purple-400 shadow-md shadow-purple-600/40 ring-1 ring-purple-300'
                       : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-purple-300 hover:border-purple-500/40'
                   }`}
                   title="Inverts dynamic transfer slope: loud signals drop BELOW threshold (Omnipressor effect)"
                 >
-                  <Zap className={`w-3.5 h-3.5 ${params.negativeRatio ? 'fill-current text-purple-200' : 'text-purple-400'}`} />
+                  <Zap className={`w-3 h-3 ${params.negativeRatio ? 'fill-current text-purple-200' : 'text-purple-400'}`} />
                   <span>{params.negativeRatio ? 'INVERT ON' : 'ENABLE NEG'}</span>
                 </button>
 
@@ -328,52 +390,21 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
                     </button>
                   ))}
                 </div>
-
-                {/* Lookahead Function Dial & Presets */}
-                <div className="w-full pt-1.5 border-t border-studio-800/80 flex items-center justify-between gap-1">
-                  <RotaryKnob
-                    label="Lookahead"
-                    value={params.lookaheadMs || 0}
-                    min={0}
-                    max={10}
-                    step={0.5}
-                    defaultValue={0}
-                    unit="ms"
-                    color="#c084fc"
-                    size="sm"
-                    onChange={(val) => onUpdateParam('lookaheadMs', val)}
-                    formatValue={(v) => (v === 0 ? '0ms (Off)' : `${v.toFixed(1)}ms`)}
-                  />
-
-                  {/* Lookahead Quick Buttons */}
-                  <div className="flex flex-col gap-0.5">
-                    {[
-                      { label: '0ms', val: 0 },
-                      { label: '2ms', val: 2 },
-                      { label: '5ms', val: 5 }
-                    ].map(btn => (
-                      <button
-                        key={btn.label}
-                        type="button"
-                        onClick={() => onUpdateParam('lookaheadMs', btn.val)}
-                        className={`px-1.5 py-0.5 rounded text-[8px] font-bold border transition-all cursor-pointer ${
-                          (params.lookaheadMs || 0) === btn.val
-                            ? 'bg-purple-500/30 text-purple-200 border-purple-400'
-                            : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        {btn.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
               </div>
 
-              <div className="text-[9px] text-slate-400 leading-tight">
-                {params.lookaheadMs > 0 ? (
-                  <span className="text-purple-300 font-semibold">Pre-clamps transients {params.lookaheadMs.toFixed(1)}ms early.</span>
+              <div className="text-[9px] leading-tight">
+                {params.negativeRatio ? (
+                  params.lookaheadMs > 0 ? (
+                    <span className="text-purple-300 font-semibold">Omnipressor: pre-clamps onset peaks {params.lookaheadMs.toFixed(1)}ms early.</span>
+                  ) : (
+                    <span className="text-purple-300">Inverted dynamics: peaks drop below threshold.</span>
+                  )
                 ) : (
-                  <span>Lookahead buffers audio to clamp onset peaks.</span>
+                  params.lookaheadMs > 0 ? (
+                    <span className="text-cyan-300 font-semibold">Normal Lookahead: sidechain leads audio by {params.lookaheadMs.toFixed(1)}ms to eliminate overshoot.</span>
+                  ) : (
+                    <span className="text-slate-400">Normal Lookahead: buffers audio to catch fast transients cleanly.</span>
+                  )
                 )}
               </div>
             </div>

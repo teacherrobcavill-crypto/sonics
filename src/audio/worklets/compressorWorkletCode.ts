@@ -43,6 +43,8 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
     this.lookaheadSamples = 0;
     this.lookaheadBufferL = new Float32Array(2048);
     this.lookaheadBufferR = new Float32Array(2048);
+    this.dryBufferL = new Float32Array(2048);
+    this.dryBufferR = new Float32Array(2048);
     this.lookaheadWriteIdx = 0;
 
     // Transient Designer DSP state (differential envelope followers)
@@ -194,6 +196,8 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         this.tdEnvFast = 0; this.tdEnvSlow = 0; this.tdEnvSust = 0;
         this.lookaheadBufferL.fill(0);
         this.lookaheadBufferR.fill(0);
+        this.dryBufferL.fill(0);
+        this.dryBufferR.fill(0);
       }
     };
   }
@@ -379,36 +383,38 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       const inL = rawL;
       const inR = rawR;
 
-      // Store in lookahead delay ring buffer for the audio path
+      // 1. Store clean dry input in circular buffer (for parallel mix and lookahead alignment)
       const bufLen = 2048;
       const wIdx = this.lookaheadWriteIdx;
-      this.lookaheadBufferL[wIdx] = inL;
-      this.lookaheadBufferR[wIdx] = inR;
+      this.dryBufferL[wIdx] = inL;
+      this.dryBufferR[wIdx] = inR;
 
-      // Delayed audio read index for VCA application
-      let delayedL = inL;
-      let delayedR = inR;
+      let delayedDryL = inL;
+      let delayedDryR = inR;
       if (this.lookaheadSamples > 0) {
         const rIdx = (wIdx - this.lookaheadSamples + bufLen) % bufLen;
-        delayedL = this.lookaheadBufferL[rIdx];
-        delayedR = this.lookaheadBufferR[rIdx];
+        delayedDryL = this.dryBufferL[rIdx];
+        delayedDryR = this.dryBufferR[rIdx];
       }
-      this.lookaheadWriteIdx = (wIdx + 1) % bufLen;
 
-      // Meter accumulators
+      // Meter accumulators on incoming audio
       this.inPeakL = Math.max(this.inPeakL, Math.abs(inL));
       this.inPeakR = Math.max(this.inPeakR, Math.abs(inR));
       this.inRmsAccumL += inL * inL;
       this.inRmsAccumR += inR * inR;
 
-      // 2. Pre-Compressor Transient Designer (if routing is set to 'pre')
-      let preCompL = delayedL;
-      let preCompR = delayedR;
-      let tdGainPre = 1.0;
+      // 2. Pre-Compressor Transient Designer Routing & Lookahead Preparation
+      let vcaInL, vcaInR;
+      let scL = inL;
+      let scR = inR;
 
       if (this.transientRouting === 'pre') {
+        // PRE mode: Transient Designer processes incoming audio before lookahead and compression
+        let tdPreL = inL;
+        let tdPreR = inR;
+
         if (Math.abs(this.transientAttack) > 0.005 || Math.abs(this.transientSustain) > 0.005) {
-          const monoAbs = 0.5 * (Math.abs(preCompL) + Math.abs(preCompR));
+          const monoAbs = 0.5 * (Math.abs(inL) + Math.abs(inR));
           this.tdEnvFast = this.alphaTdFast * this.tdEnvFast + (1.0 - this.alphaTdFast) * monoAbs;
           this.tdEnvSlow = this.alphaTdSlow * this.tdEnvSlow + (1.0 - this.alphaTdSlow) * monoAbs;
           this.tdEnvSust = this.alphaTdSust * this.tdEnvSust + (1.0 - this.alphaTdSust) * monoAbs;
@@ -421,17 +427,49 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
           const attackGainMod = 1.0 + (shapedAttack * normalizedDiff * 1.5);
           const sustainGainMod = 1.0 + (this.transientSustain * (this.tdEnvSust / (this.tdEnvFast + 1e-4)) * 0.7);
 
-          tdGainPre = Math.max(0.05, Math.min(3.0, attackGainMod * sustainGainMod));
-          preCompL *= tdGainPre;
-          preCompR *= tdGainPre;
+          const tdGainPre = Math.max(0.05, Math.min(3.0, attackGainMod * sustainGainMod));
+          tdPreL *= tdGainPre;
+          tdPreR *= tdGainPre;
         }
+
+        // Store pre-shaped audio in lookahead buffer
+        this.lookaheadBufferL[wIdx] = tdPreL;
+        this.lookaheadBufferR[wIdx] = tdPreR;
+
+        if (this.lookaheadSamples > 0) {
+          const rIdx = (wIdx - this.lookaheadSamples + bufLen) % bufLen;
+          vcaInL = this.lookaheadBufferL[rIdx];
+          vcaInR = this.lookaheadBufferR[rIdx];
+        } else {
+          vcaInL = tdPreL;
+          vcaInR = tdPreR;
+        }
+
+        // Sidechain leads the VCA audio path by lookaheadSamples
+        scL = tdPreL;
+        scR = tdPreR;
+      } else {
+        // POST mode: Store clean input in lookahead buffer
+        this.lookaheadBufferL[wIdx] = inL;
+        this.lookaheadBufferR[wIdx] = inR;
+
+        if (this.lookaheadSamples > 0) {
+          const rIdx = (wIdx - this.lookaheadSamples + bufLen) % bufLen;
+          vcaInL = this.lookaheadBufferL[rIdx];
+          vcaInR = this.lookaheadBufferR[rIdx];
+        } else {
+          vcaInL = inL;
+          vcaInR = inR;
+        }
+
+        // Sidechain leads the VCA audio path by lookaheadSamples
+        scL = inL;
+        scR = inR;
       }
 
-      // 3. Feed-Forward Sidechain Filtering (HPF & Sweepable Mid Band)
-      // When Transient Designer is PRE, the sidechain detector receives the shaped transients
-      let scL = this.transientRouting === 'pre' ? inL * tdGainPre : inL;
-      let scR = this.transientRouting === 'pre' ? inR * tdGainPre : inR;
+      this.lookaheadWriteIdx = (wIdx + 1) % bufLen;
 
+      // 3. Sidechain Filtering (HPF & Sweepable Mid Band)
       if (this.scHpfActive) {
         scL = this.processHpfL(scL);
         scR = this.processHpfR(scR);
@@ -442,14 +480,14 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         scR = this.processMidR(scR);
       }
 
-      // 4. Sidechain Detection (Stereo Maximum of Filtered Signal)
+      // 4. Sidechain Level Detection & Static Gain Computer
       const scLevel = Math.max(Math.abs(scL), Math.abs(scR));
       const scDb = 20.0 * Math.log10(Math.max(scLevel, 1e-6));
-
-      // 5. Static Gain Computer with Soft-Knee
       const targetGrDb = this.computeTargetGainReduction(scDb);
 
-      // 6. Branching Attack / Release Envelope Filter
+      // 5. Envelope Ballistics Filter
+      // (When negativeRatio is OFF, this provides standard overshoot-free lookahead compression.
+      //  When negativeRatio is ON, this provides early onset clamping for Omnipressor transient inversion.)
       if (targetGrDb < this.envelopeDb) {
         this.envelopeDb = this.alphaAtt * this.envelopeDb + (1.0 - this.alphaAtt) * targetGrDb;
       } else {
@@ -461,21 +499,20 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
       this.grMaxInInterval = Math.max(this.grMaxInInterval, this.envelopeDb);
       this.avgGr300 = this.alpha300 * this.avgGr300 + (1.0 - this.alpha300) * Math.abs(this.envelopeDb);
 
-      // 7. Base VCA Gain Reduction (Linear factor)
+      // 6. Base VCA Gain Reduction
       const grLinear = Math.pow(10.0, this.envelopeDb / 20.0);
 
-      // 8. Process Wet Signal (Compressor VCA & Transient Designer)
+      // 7. Apply VCA and Post-Transient Designer
       let wetL, wetR;
       if (this.transientRouting === 'pre') {
-        // PRE mode: preCompL/R was shaped by TD, then compressed by VCA
-        wetL = preCompL * grLinear;
-        wetR = preCompR * grLinear;
+        // In PRE mode, vcaInL/R was already shaped by TD, now compressed by VCA
+        wetL = vcaInL * grLinear;
+        wetR = vcaInR * grLinear;
       } else {
-        // POST mode: delayedL/R compressed by VCA first
-        let compL = delayedL * grLinear;
-        let compR = delayedR * grLinear;
+        // In POST mode, vcaInL/R compressed by VCA first
+        let compL = vcaInL * grLinear;
+        let compR = vcaInR * grLinear;
 
-        // Then Transient Designer shapes the post-compressed audio
         if (Math.abs(this.transientAttack) > 0.005 || Math.abs(this.transientSustain) > 0.005) {
           const monoAbs = 0.5 * (Math.abs(compL) + Math.abs(compR));
           this.tdEnvFast = this.alphaTdFast * this.tdEnvFast + (1.0 - this.alphaTdFast) * monoAbs;
@@ -499,8 +536,7 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         wetR = compR;
       }
 
-      // 9. Parallel Blender: blends the combined (compression + transient designer) wet signal
-      // with the original clean input signal (delayedL/R aligned with lookahead)
+      // 8. Parallel Blender: blend combined wet (compression + TD) with original clean input
       let resL, resR;
       if (this.scMonitor) {
         // Monitor mode: engineer auditions the filtered sidechain detection path
@@ -508,8 +544,8 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         resR = scR;
       } else {
         if (this.mixLinear < 0.999) {
-          resL = (1.0 - this.mixLinear) * delayedL + this.mixLinear * wetL;
-          resR = (1.0 - this.mixLinear) * delayedR + this.mixLinear * wetR;
+          resL = (1.0 - this.mixLinear) * delayedDryL + this.mixLinear * wetL;
+          resR = (1.0 - this.mixLinear) * delayedDryR + this.mixLinear * wetR;
         } else {
           resL = wetL;
           resR = wetR;
