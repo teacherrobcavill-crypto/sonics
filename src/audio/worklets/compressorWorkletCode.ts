@@ -22,6 +22,7 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
     this.kneeWidth = 4.0;
     this.alphaAtt = Math.exp(-1.0 / (0.010 * 44100));
     this.alphaRel = Math.exp(-1.0 / (0.100 * 44100));
+    this.makeupGainDb = 0.0;
     this.makeupGainLinear = 1.0;
     this.outputGainLinear = 1.0;
     this.bypassed = false;
@@ -80,6 +81,10 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         this.ratio = Math.max(1.0, p.ratio);
         this.slope = (this.ratio >= 50.0) ? 0.0 : (1.0 / this.ratio);
         this.kneeWidth = Math.max(0.0, Math.min(24.0, p.kneeDb || 4.0));
+        if (p.makeupGainDb !== undefined) {
+          this.makeupGainDb = Math.max(-12.0, Math.min(24.0, p.makeupGainDb));
+          this.makeupGainLinear = Math.pow(10.0, this.makeupGainDb / 20.0);
+        }
 
         const attSec = Math.max(0.0001, (p.attackMs || 10.0) * 0.001);
         const relSec = Math.max(0.001, (p.releaseMs || 100.0) * 0.001);
@@ -337,7 +342,7 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
 
       // 6. Total VCA Gain
       const grLinear = Math.pow(10.0, this.envelopeDb / 20.0);
-      const vcaGain = grLinear * autoGainLinear;
+      const vcaGain = grLinear * autoGainLinear * this.makeupGainLinear;
 
       // 7. Parallel Blender (NY style) & Sidechain Monitor Routing
       let resL, resR;

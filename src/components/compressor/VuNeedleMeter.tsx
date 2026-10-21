@@ -113,11 +113,11 @@ export const VuNeedleMeter: React.FC<VuNeedleMeterProps> = ({ needlePosition, is
     ctx.font = '900 11px "SF Mono", Menlo, Monaco, monospace';
     ctx.fillStyle = '#1e293b';
     ctx.textAlign = 'center';
-    ctx.fillText('GAIN REDUCTION dB', pivotX, height * 0.44);
+    ctx.fillText('GAIN REDUCTION dB', pivotX, height * 0.62);
 
     ctx.font = '700 8.5px "SF Mono", Menlo, Monaco, monospace';
     ctx.fillStyle = '#64748b';
-    ctx.fillText('ANSI C16.5', pivotX, height * 0.52);
+    ctx.fillText('ANSI C16.5', pivotX, height * 0.70);
 
     // 3. Physical Needle Drawing
     const needleAngle = VUMeterBallistics.positionToAngle(needlePosition) - Math.PI / 2;

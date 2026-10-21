@@ -9,6 +9,7 @@ export interface CompressorParams {
   attackMs: number;          // 0.1 ms to 200.0 ms (default: 10.0)
   releaseMs: number;         // 10.0 ms to 1000.0 ms (default: 100.0)
   kneeDb: number;            // 0.0 dB to 24.0 dB (default: 4.0 dB quadratic soft-knee)
+  makeupGainDb: number;      // -12.0 dB to +24.0 dB (default: 0.0 dB manual makeup gain)
   autoGain: boolean;         // Auto-gain compensation mode
   bypassed: boolean;         // Studio hardware bypass switch
 
@@ -28,6 +29,7 @@ export const DEFAULT_COMPRESSOR_PARAMS: CompressorParams = {
   attackMs: 10.0,
   releaseMs: 100.0,
   kneeDb: 4.0,
+  makeupGainDb: 0.0,
   autoGain: true,
   bypassed: false,
 

@@ -66,6 +66,15 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
               HPF: {params.scHpfActive ? `${params.scHpfHz.toFixed(0)}Hz` : 'OFF'}
             </span>
 
+            {/* Makeup Gain Pill */}
+            <span className={`px-2 py-0.5 rounded-md border ${
+              Math.abs(params.makeupGainDb || 0) > 0.1
+                ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold'
+                : 'bg-studio-900 text-slate-500 border-studio-800'
+            }`}>
+              MAKEUP: {(params.makeupGainDb || 0) > 0 ? '+' : ''}{(params.makeupGainDb || 0).toFixed(1)}dB
+            </span>
+
             {/* Mid Pill */}
             <span className={`px-2 py-0.5 rounded-md border ${
               params.scMidActive && Math.abs(params.scMidGainDb) > 0.05
@@ -104,14 +113,14 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
       {isOpen && (
         <div className="mt-3 p-4 sm:p-5 rounded-2xl bg-studio-950/80 border border-studio-800/90 shadow-2xl space-y-5 animate-in fade-in duration-200">
           
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
             
             {/* Section A: Parallel Blender (New York Style) */}
-            <div className="md:col-span-4 bg-studio-900/60 border border-studio-800 rounded-xl p-3.5 flex flex-col justify-between space-y-3">
+            <div className="md:col-span-3 bg-studio-900/60 border border-studio-800 rounded-xl p-3 flex flex-col justify-between space-y-3">
               <div className="flex items-center justify-between border-b border-studio-800 pb-2">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
                   <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>PARALLEL BLENDER</span>
+                  <span>PARALLEL MIX</span>
                 </div>
                 <span className="text-[10px] text-cyan-400/80 font-bold">NY STYLE</span>
               </div>
@@ -132,11 +141,11 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
                 />
 
                 {/* Quick Blend Presets */}
-                <div className="flex flex-col gap-1.5">
+                <div className="flex flex-col gap-1">
                   <button
                     type="button"
                     onClick={() => onUpdateParam('mixPercent', 100)}
-                    className={`px-2.5 py-1 rounded-lg text-[9px] font-bold border transition-all cursor-pointer ${
+                    className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
                       params.mixPercent === 100
                         ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400'
                         : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
@@ -148,19 +157,19 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
                   <button
                     type="button"
                     onClick={() => onUpdateParam('mixPercent', 50)}
-                    className={`px-2.5 py-1 rounded-lg text-[9px] font-bold border transition-all cursor-pointer ${
+                    className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
                       params.mixPercent === 50
                         ? 'bg-cyan-500/30 text-cyan-300 border-cyan-400 ring-1 ring-cyan-400'
                         : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
                     }`}
                   >
-                    50% NY BLEND
+                    50% NY
                   </button>
 
                   <button
                     type="button"
                     onClick={() => onUpdateParam('mixPercent', 0)}
-                    className={`px-2.5 py-1 rounded-lg text-[9px] font-bold border transition-all cursor-pointer ${
+                    className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
                       params.mixPercent === 0
                         ? 'bg-amber-500/20 text-amber-300 border-amber-400'
                         : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
@@ -172,18 +181,88 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
               </div>
 
               <div className="text-[9.5px] text-slate-400 leading-tight">
-                Mixes uncompressed dry signal with compressed signal to preserve natural transients while raising subtle low-level details.
+                Blends dry uncompressed with compressed tone for punch.
               </div>
             </div>
 
-            {/* Section B: Sidechain HPF (Sub/LF Filter up to 150Hz) & Sweepable Mid Band */}
-            <div className="md:col-span-5 bg-studio-900/60 border border-studio-800 rounded-xl p-3.5 flex flex-col justify-between space-y-3">
+            {/* Section B: Make-Up Gain */}
+            <div className="md:col-span-3 bg-studio-900/60 border border-studio-800 rounded-xl p-3 flex flex-col justify-between space-y-3">
+              <div className="flex items-center justify-between border-b border-studio-800 pb-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
+                  <SlidersHorizontal className="w-3.5 h-3.5 text-amber-400" />
+                  <span>MAKE-UP GAIN</span>
+                </div>
+                <span className="text-[10px] text-amber-400/80 font-bold">MANUAL</span>
+              </div>
+
+              <div className="flex items-center justify-around py-1">
+                <RotaryKnob
+                  label="Make-Up"
+                  value={params.makeupGainDb || 0}
+                  min={-12}
+                  max={24}
+                  step={0.5}
+                  defaultValue={0}
+                  unit="dB"
+                  color="#f59e0b"
+                  size="sm"
+                  onChange={(val) => onUpdateParam('makeupGainDb', val)}
+                  formatValue={(v) => `${v > 0 ? '+' : ''}${v.toFixed(1)}dB`}
+                />
+
+                {/* Quick Gain Presets */}
+                <div className="flex flex-col gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onUpdateParam('makeupGainDb', 0)}
+                    className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
+                      (params.makeupGainDb || 0) === 0
+                        ? 'bg-amber-500/25 text-amber-300 border-amber-400 ring-1 ring-amber-400'
+                        : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    0 dB
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onUpdateParam('makeupGainDb', 3)}
+                    className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
+                      (params.makeupGainDb || 0) === 3
+                        ? 'bg-amber-500/25 text-amber-300 border-amber-400 ring-1 ring-amber-400'
+                        : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    +3 dB
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onUpdateParam('makeupGainDb', 6)}
+                    className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
+                      (params.makeupGainDb || 0) === 6
+                        ? 'bg-amber-500/25 text-amber-300 border-amber-400 ring-1 ring-amber-400'
+                        : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    +6 dB
+                  </button>
+                </div>
+              </div>
+
+              <div className="text-[9.5px] text-slate-400 leading-tight">
+                Post-VCA manual gain boost or cut (-12dB to +24dB) to match perceived volume.
+              </div>
+            </div>
+
+            {/* Section C: Sidechain HPF & Sweepable Mid Band */}
+            <div className="md:col-span-4 bg-studio-900/60 border border-studio-800 rounded-xl p-3 flex flex-col justify-between space-y-3">
               <div className="flex items-center justify-between border-b border-studio-800 pb-2">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
                   <Filter className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>SIDECHAIN DETECTOR EQ</span>
+                  <span>SIDECHAIN EQ</span>
                 </div>
-                <span className="text-[10px] text-slate-400">INTERNAL FILTER</span>
+                <span className="text-[10px] text-slate-400">DETECTOR</span>
               </div>
 
               <div className="grid grid-cols-3 gap-2 py-1 items-center justify-items-center">
@@ -266,12 +345,12 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
               </div>
 
               <div className="text-[9.5px] text-slate-400 leading-tight">
-                HPF protects sub fundamentals from causing pumping. Mid band focuses compression on harsh frequencies (2-5kHz) or cuts boxiness.
+                HPF protects bass from pumping. Mid targets harshness.
               </div>
             </div>
 
-            {/* Section C: Sidechain Monitor / Audition Switch */}
-            <div className="md:col-span-3 bg-studio-900/60 border border-studio-800 rounded-xl p-3.5 flex flex-col justify-between space-y-3">
+            {/* Section D: Sidechain Monitor / Audition Switch */}
+            <div className="md:col-span-2 bg-studio-900/60 border border-studio-800 rounded-xl p-3 flex flex-col justify-between space-y-3">
               <div className="flex items-center justify-between border-b border-studio-800 pb-2">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
                   <Headphones className="w-3.5 h-3.5 text-amber-400" />
@@ -285,29 +364,24 @@ export const AdvancedCompressorControls: React.FC<AdvancedCompressorControlsProp
                 <button
                   type="button"
                   onClick={() => onUpdateParam('scMonitor', !params.scMonitor)}
-                  className={`w-full py-3.5 px-3 rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                  className={`w-full py-3 px-2 rounded-xl border flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
                     params.scMonitor
                       ? 'bg-amber-500/25 border-amber-400 text-amber-300 ring-2 ring-amber-400/50 shadow-lg shadow-amber-500/30'
                       : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white hover:border-slate-700'
                   }`}
                 >
-                  <div className="flex items-center gap-2">
-                    <Activity className={`w-4 h-4 ${params.scMonitor ? 'animate-bounce text-amber-300' : 'text-slate-500'}`} />
-                    <span className="text-[11px] font-bold tracking-wide">
-                      {params.scMonitor ? 'SC AUDITION ON' : 'MONITOR DETECTOR'}
-                    </span>
-                  </div>
-                  <span className="text-[8.5px] text-slate-400">
-                    {params.scMonitor ? 'Listening to Filtered Sidechain' : 'Click to hear detector signal'}
+                  <Activity className={`w-4 h-4 ${params.scMonitor ? 'animate-bounce text-amber-300' : 'text-slate-500'}`} />
+                  <span className="text-[10px] font-bold tracking-wide text-center">
+                    {params.scMonitor ? 'AUDITION ON' : 'MONITOR SC'}
                   </span>
                 </button>
               </div>
 
-              <div className="text-[9.5px] text-amber-400/90 leading-tight">
+              <div className="text-[9px] text-amber-400/90 leading-tight">
                 {params.scMonitor ? (
-                  <span className="font-bold">⚠️ Warning: Listening to sidechain filter! Turn off for normal compression.</span>
+                  <span className="font-bold">⚠️ Listening to SC filter!</span>
                 ) : (
-                  <span>Route the filtered sidechain to audio output to hear exactly what drives the compression.</span>
+                  <span>Route SC to output.</span>
                 )}
               </div>
             </div>
