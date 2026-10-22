@@ -78,13 +78,16 @@ export function generateProceduralStemAudio(ctx: AudioContext, stemId: string): 
       const accent = (beat % 4 === 0) ? 1.0 : (beat % 2 === 0 ? 0.88 : 0.75);
       const hitSamples = Math.floor(0.45 * sampleRate);
 
+      const rampSamples = Math.floor(0.0005 * sampleRate);
+
       for (let i = 0; i < hitSamples && (startSample + i) < totalSamples; ++i) {
         const t = i / sampleRate;
+        const onsetRamp = i < rampSamples ? (i / rampSamples) : 1.0;
         // Pitch envelope: drops rapidly from 160Hz to 48Hz
         const freq = 48 + 120 * Math.exp(-t * 35.0);
         const sub = Math.sin(2.0 * Math.PI * freq * t) * Math.exp(-t * 9.0);
-        // Beater click (high-frequency snap)
-        const click = (Math.random() * 2 - 1) * Math.exp(-t * 80.0) * 0.45;
+        // Beater click (high-frequency snap with natural onset)
+        const click = (Math.random() * 2 - 1) * Math.exp(-t * 80.0) * 0.45 * onsetRamp;
         const sample = (sub + click) * accent * 0.85;
 
         left[startSample + i] += sample;
@@ -93,6 +96,7 @@ export function generateProceduralStemAudio(ctx: AudioContext, stemId: string): 
     }
   } else if (stemId === 'snare') {
     // Snare hits on beats 2 and 4 with ghost notes
+    const rampSamples = Math.floor(0.0005 * sampleRate);
     for (let bar = 0; bar < loopBars; bar++) {
       const barStart = bar * 4 * beatSec;
       const hits = [
@@ -108,12 +112,13 @@ export function generateProceduralStemAudio(ctx: AudioContext, stemId: string): 
 
         for (let i = 0; i < hitSamples && (startSample + i) < totalSamples; ++i) {
           const t = i / sampleRate;
+          const onsetRamp = i < rampSamples ? (i / rampSamples) : 1.0;
           // Body tone: drops from 240Hz to 180Hz
           const freq = 180 + 60 * Math.exp(-t * 40.0);
           const body = Math.sin(2.0 * Math.PI * freq * t) * Math.exp(-t * 16.0) * 0.6;
-          // White noise wire rattle with stereo spread
-          const noiseL = (Math.random() * 2 - 1) * Math.exp(-t * 12.0) * 0.7;
-          const noiseR = (Math.random() * 2 - 1) * Math.exp(-t * 12.0) * 0.7;
+          // White noise wire rattle with stereo spread and natural onset
+          const noiseL = (Math.random() * 2 - 1) * Math.exp(-t * 12.0) * 0.7 * onsetRamp;
+          const noiseR = (Math.random() * 2 - 1) * Math.exp(-t * 12.0) * 0.7 * onsetRamp;
 
           left[startSample + i] += (body + noiseL) * hit.vol * 0.8;
           right[startSample + i] += (body + noiseR) * hit.vol * 0.8;

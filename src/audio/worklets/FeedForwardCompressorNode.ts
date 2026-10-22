@@ -61,9 +61,9 @@ export class FeedForwardCompressorNode {
         }
       };
 
-      // Brickwall safety limiter to prevent ear damage
+      // Brickwall safety limiter to prevent ear damage (overload failsafe above -0.1 dBFS)
       this.safetyLimiter = this.ctx.createDynamicsCompressor();
-      this.safetyLimiter.threshold.setValueAtTime(-0.5, this.ctx.currentTime);
+      this.safetyLimiter.threshold.setValueAtTime(-0.1, this.ctx.currentTime);
       this.safetyLimiter.knee.setValueAtTime(0, this.ctx.currentTime);
       this.safetyLimiter.ratio.setValueAtTime(20, this.ctx.currentTime);
       this.safetyLimiter.attack.setValueAtTime(0.001, this.ctx.currentTime);

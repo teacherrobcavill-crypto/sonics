@@ -28,7 +28,10 @@ import {
   BarChart2,
   Activity,
   Sparkles,
-  VolumeX
+  VolumeX,
+  ChevronDown,
+  ChevronUp,
+  Zap
 } from 'lucide-react';
 
 export interface CompressorLabProps {
@@ -77,6 +80,7 @@ export const CompressorLab: React.FC<CompressorLabProps> = ({
     ...COMPRESSOR_STEMS[0].suggestedParams
   });
   const [customFileName, setCustomFileName] = useState<string | null>(null);
+  const [isTransientOpen, setIsTransientOpen] = useState(false);
 
   // Telemetry from AudioWorklet
   const [telemetry, setTelemetry] = useState<CompressorTelemetry>({
@@ -602,136 +606,243 @@ export const CompressorLab: React.FC<CompressorLabProps> = ({
               formatValue={v => (v < 1.0 ? `${v.toFixed(1)} ms` : `${v.toFixed(0)} ms`)}
             />
 
-            {/* Release Knob with Embedded Center Transient Designer (in between Attack & Release) */}
-            <div className="relative w-full flex items-center justify-center">
-              {/* Transient Designer Floating Bridge (Desktop / Tablet) */}
-              <div
-                className="hidden sm:flex flex-col absolute right-full top-1/2 -translate-y-1/2 translate-x-1/2 z-20 items-center justify-center bg-studio-950/95 border border-studio-800/90 rounded-2xl px-2 py-1.5 shadow-xl shadow-black/60 pointer-events-auto"
-                style={{ width: '148px' }}
-              >
-                {/* PRE / POST Routing Button above the knobs */}
-                <div className="flex items-center justify-between w-full px-1.5 pb-1 border-b border-studio-800/50 mb-1">
-                  <span className="text-[7.5px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-                    ROUTING
+            <RotaryKnob
+              label="Release"
+              value={params.releaseMs}
+              min={10.0}
+              max={1000.0}
+              step={1.0}
+              isLogarithmic
+              defaultValue={100.0}
+              color="#f59e0b"
+              onChange={v => updateParam('releaseMs', v)}
+              formatValue={v => `${v.toFixed(0)} ms`}
+            />
+          </div>
+
+          {/* Transient Designer Dropdown (Closed by default per user request) */}
+          <div className="w-full mt-4 pt-3 border-t border-studio-800/80 font-mono">
+            <button
+              type="button"
+              onClick={() => setIsTransientOpen(!isTransientOpen)}
+              className={`w-full py-2.5 px-4 rounded-xl border flex items-center justify-between transition-all cursor-pointer select-none group ${
+                isTransientOpen
+                  ? 'bg-studio-950 border-rose-500/50 shadow-md ring-1 ring-rose-500/30'
+                  : 'bg-studio-950/60 border-studio-800 hover:border-slate-700 hover:bg-studio-950/90'
+              }`}
+            >
+              {/* Left: Title & Badges */}
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Zap className={`w-4 h-4 transition-colors ${
+                    isTransientOpen ? 'text-rose-400' : 'text-slate-400 group-hover:text-rose-400'
+                  }`} />
+                  <span className="text-xs font-bold text-white tracking-wider uppercase">
+                    Transient Designer
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => updateParam('transientRouting', params.transientRouting === 'pre' ? 'post' : 'pre')}
-                    className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-black uppercase transition-all border cursor-pointer flex items-center gap-1 ${
-                      params.transientRouting === 'pre'
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-500/20'
-                        : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm shadow-cyan-500/20'
-                    }`}
-                    title={`Click to switch between PRE (before compressor) and POST (after compressor). Currently: ${(params.transientRouting || 'post').toUpperCase()}`}
-                  >
-                    <span className={params.transientRouting === 'pre' ? 'text-amber-300 font-extrabold' : 'text-slate-500'}>PRE</span>
-                    <span className="text-slate-600">/</span>
-                    <span className={(params.transientRouting || 'post') === 'post' ? 'text-cyan-300 font-extrabold' : 'text-slate-500'}>POST</span>
-                  </button>
                 </div>
 
-                <div className="flex items-center justify-center gap-2 w-full">
-                  <div className="flex flex-col items-center">
-                    <RotaryKnob
-                      label="Transient"
-                      value={params.transientAttack || 0}
-                      min={-100}
-                      max={100}
-                      step={2}
-                      defaultValue={0}
-                      unit="%"
-                      color="#f43f5e"
-                      size="sm"
-                      onChange={v => updateParam('transientAttack', v)}
-                      formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
-                    />
-                  </div>
+                {/* Status Pills */}
+                <div className="hidden sm:flex items-center gap-1.5 text-[10px]">
+                  <span className={`px-2 py-0.5 rounded-md border font-bold ${
+                    Math.abs(params.transientAttack || 0) > 0
+                      ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                      : 'bg-studio-900 text-slate-500 border-studio-800'
+                  }`}>
+                    TRANSIENT: {(params.transientAttack || 0) > 0 ? '+' : ''}{(params.transientAttack || 0).toFixed(0)}%
+                  </span>
 
-                  <div className="h-8 w-px bg-studio-800/80 my-auto" />
+                  <span className={`px-2 py-0.5 rounded-md border font-bold ${
+                    Math.abs(params.transientSustain || 0) > 0
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                      : 'bg-studio-900 text-slate-500 border-studio-800'
+                  }`}>
+                    SUSTAIN: {(params.transientSustain || 0) > 0 ? '+' : ''}{(params.transientSustain || 0).toFixed(0)}%
+                  </span>
 
-                  <div className="flex flex-col items-center">
-                    <RotaryKnob
-                      label="Sustain"
-                      value={params.transientSustain || 0}
-                      min={-100}
-                      max={100}
-                      step={2}
-                      defaultValue={0}
-                      unit="%"
-                      color="#10b981"
-                      size="sm"
-                      onChange={v => updateParam('transientSustain', v)}
-                      formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
-                    />
-                  </div>
+                  <span className={`px-2 py-0.5 rounded-md border font-bold ${
+                    params.transientRouting === 'pre'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                      : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
+                  }`}>
+                    ROUTING: {(params.transientRouting || 'post').toUpperCase()}
+                  </span>
                 </div>
               </div>
 
-              {/* Release Knob */}
-              <RotaryKnob
-                label="Release"
-                value={params.releaseMs}
-                min={10.0}
-                max={1000.0}
-                step={1.0}
-                isLogarithmic
-                defaultValue={100.0}
-                color="#f59e0b"
-                onChange={v => updateParam('releaseMs', v)}
-                formatValue={v => `${v.toFixed(0)} ms`}
-              />
-            </div>
-          </div>
+              {/* Right: Toggle Chevron */}
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-slate-400 font-bold hidden sm:inline">
+                  {isTransientOpen ? 'HIDE' : 'REVEAL'}
+                </span>
+                {isTransientOpen ? (
+                  <ChevronUp className="w-4 h-4 text-rose-400" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-white" />
+                )}
+              </div>
+            </button>
 
-          {/* Mobile Transient Designer Bar (Rendered cleanly below the 2x2 grid on small mobile viewports) */}
-          <div className="sm:hidden flex items-center justify-between bg-studio-950/80 border border-studio-800 rounded-xl px-3 py-2 mt-2">
-            <div className="flex flex-col items-start gap-1">
-              <span className="text-[8.5px] font-mono font-bold text-slate-400 uppercase tracking-wider">
-                Transient:
-              </span>
-              <button
-                type="button"
-                onClick={() => updateParam('transientRouting', params.transientRouting === 'pre' ? 'post' : 'pre')}
-                className={`px-2 py-0.5 rounded text-[8px] font-mono font-black uppercase transition-all border cursor-pointer flex items-center gap-1 ${
-                  params.transientRouting === 'pre'
-                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-500/20'
-                    : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm shadow-cyan-500/20'
-                }`}
-                title={`Click to switch between PRE (before compressor) and POST (after compressor). Currently: ${(params.transientRouting || 'post').toUpperCase()}`}
-              >
-                <span className={params.transientRouting === 'pre' ? 'text-amber-300 font-extrabold' : 'text-slate-500'}>PRE</span>
-                <span className="text-slate-600">/</span>
-                <span className={(params.transientRouting || 'post') === 'post' ? 'text-cyan-300 font-extrabold' : 'text-slate-500'}>POST</span>
-              </button>
-            </div>
-            <div className="flex items-center gap-3">
-              <RotaryKnob
-                label="Transient"
-                value={params.transientAttack || 0}
-                min={-100}
-                max={100}
-                step={2}
-                defaultValue={0}
-                unit="%"
-                color="#f43f5e"
-                size="sm"
-                onChange={v => updateParam('transientAttack', v)}
-                formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
-              />
-              <RotaryKnob
-                label="Sustain"
-                value={params.transientSustain || 0}
-                min={-100}
-                max={100}
-                step={2}
-                defaultValue={0}
-                unit="%"
-                color="#10b981"
-                size="sm"
-                onChange={v => updateParam('transientSustain', v)}
-                formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
-              />
-            </div>
+            {/* Revealed Transient Designer Panel */}
+            {isTransientOpen && (
+              <div className="mt-3 p-4 sm:p-5 rounded-2xl bg-studio-950/80 border border-studio-800/90 shadow-2xl space-y-4 animate-in fade-in duration-200">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-studio-800/80 pb-2.5 gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-200 uppercase tracking-wider">
+                      Envelope Shaper
+                    </span>
+                    <span className="text-[10px] text-slate-400">
+                      (Level-independent attack crack & sustain body control)
+                    </span>
+                  </div>
+
+                  {/* PRE / POST Routing Toggle */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">
+                      Routing:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => updateParam('transientRouting', params.transientRouting === 'pre' ? 'post' : 'pre')}
+                      className={`px-2.5 py-1 rounded-lg text-[9.5px] font-bold uppercase transition-all border cursor-pointer flex items-center gap-1.5 ${
+                        params.transientRouting === 'pre'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-sm shadow-amber-500/20'
+                          : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 shadow-sm shadow-cyan-500/20'
+                      }`}
+                      title={`Click to switch between PRE (before compressor) and POST (after compressor). Currently: ${(params.transientRouting || 'post').toUpperCase()}`}
+                    >
+                      <span className={params.transientRouting === 'pre' ? 'text-amber-300 font-extrabold' : 'text-slate-500'}>PRE-COMP</span>
+                      <span className="text-slate-600">/</span>
+                      <span className={(params.transientRouting || 'post') === 'post' ? 'text-cyan-300 font-extrabold' : 'text-slate-500'}>POST-COMP</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-center">
+                  {/* Transient Attack Control Card */}
+                  <div className="bg-studio-900/60 border border-studio-800 rounded-xl p-3.5 flex items-center justify-between">
+                    <div className="space-y-1.5 pr-2">
+                      <div className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+                        <span>TRANSIENT ATTACK</span>
+                      </div>
+                      <p className="text-[9.5px] text-slate-400 leading-tight">
+                        Accentuate pick/stick snap or soften harsh strikes (-100% to +100%).
+                      </p>
+                      <div className="flex gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => updateParam('transientAttack', 0)}
+                          className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
+                            (params.transientAttack || 0) === 0
+                              ? 'bg-studio-800 text-white border-slate-600'
+                              : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          0%
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateParam('transientAttack', 25)}
+                          className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
+                            (params.transientAttack || 0) === 25
+                              ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                              : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          +25%
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateParam('transientAttack', -25)}
+                          className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
+                            (params.transientAttack || 0) === -25
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          -25%
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <RotaryKnob
+                        label="Transient"
+                        value={params.transientAttack || 0}
+                        min={-100}
+                        max={100}
+                        step={2}
+                        defaultValue={0}
+                        unit="%"
+                        color="#f43f5e"
+                        onChange={v => updateParam('transientAttack', v)}
+                        formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Sustain Control Card */}
+                  <div className="bg-studio-900/60 border border-studio-800 rounded-xl p-3.5 flex items-center justify-between">
+                    <div className="space-y-1.5 pr-2">
+                      <div className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                        <span>SUSTAIN / TAIL</span>
+                      </div>
+                      <p className="text-[9.5px] text-slate-400 leading-tight">
+                        Lengthen room resonance & decay or tighten drum tails (-100% to +100%).
+                      </p>
+                      <div className="flex gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => updateParam('transientSustain', 0)}
+                          className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
+                            (params.transientSustain || 0) === 0
+                              ? 'bg-studio-800 text-white border-slate-600'
+                              : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          0%
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateParam('transientSustain', 30)}
+                          className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
+                            (params.transientSustain || 0) === 30
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                              : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          +30%
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => updateParam('transientSustain', -30)}
+                          className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all cursor-pointer ${
+                            (params.transientSustain || 0) === -30
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : 'bg-studio-950 border-studio-800 text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          -30%
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <RotaryKnob
+                        label="Sustain"
+                        value={params.transientSustain || 0}
+                        min={-100}
+                        max={100}
+                        step={2}
+                        defaultValue={0}
+                        unit="%"
+                        color="#10b981"
+                        onChange={v => updateParam('transientSustain', v)}
+                        formatValue={v => `${v > 0 ? '+' : ''}${v.toFixed(0)}%`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Advanced Controls Reveal: Parallel Blender, Sidechain HPF, Sweepable Mid Focus & Monitor */}

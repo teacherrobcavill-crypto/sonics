@@ -47,16 +47,19 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
     this.dryBufferR = new Float32Array(2048);
     this.lookaheadWriteIdx = 0;
 
-    // Transient Designer DSP state (differential envelope followers)
+    // Transient Designer DSP state (differential peak envelope followers with anti-flamming ballistics)
     this.transientAttack = 0.0;  // -1.0 to +1.0
     this.transientSustain = 0.0; // -1.0 to +1.0
     this.transientRouting = 'post'; // 'pre' (before compressor) or 'post' (after compressor)
     this.tdEnvFast = 0.0;
     this.tdEnvSlow = 0.0;
     this.tdEnvSust = 0.0;
-    this.alphaTdFast = Math.exp(-1.0 / (0.003 * 44100)); // 3ms fast transient attack
-    this.alphaTdSlow = Math.exp(-1.0 / (0.025 * 44100)); // 25ms slower transient body
-    this.alphaTdSust = Math.exp(-1.0 / (0.150 * 44100)); // 150ms sustain body
+    this.alphaTdFastAtt = Math.exp(-1.0 / (0.001 * 44100)); // 1ms fast attack
+    this.alphaTdFastRel = Math.exp(-1.0 / (0.020 * 44100)); // 20ms release
+    this.alphaTdSlowAtt = Math.exp(-1.0 / (0.020 * 44100)); // 20ms attack
+    this.alphaTdSlowRel = Math.exp(-1.0 / (0.060 * 44100)); // 60ms release
+    this.alphaTdSustAtt = Math.exp(-1.0 / (0.050 * 44100)); // 50ms attack
+    this.alphaTdSustRel = Math.exp(-1.0 / (0.200 * 44100)); // 200ms sustain
 
     // Sidechain Biquad Filter States (Direct Form II Transposed)
     this.hpfB0 = 1.0; this.hpfB1 = 0.0; this.hpfB2 = 0.0;
@@ -181,9 +184,12 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
         this.alpha300 = Math.exp(-1.0 / (0.300 * this.fs));
         this.telemetryInterval = Math.round(this.fs / 60); // 60 FPS update rate
         this.lookaheadSamples = Math.round(this.lookaheadMs * 0.001 * this.fs);
-        this.alphaTdFast = Math.exp(-1.0 / (0.003 * this.fs));
-        this.alphaTdSlow = Math.exp(-1.0 / (0.025 * this.fs));
-        this.alphaTdSust = Math.exp(-1.0 / (0.150 * this.fs));
+        this.alphaTdFastAtt = Math.exp(-1.0 / (0.001 * this.fs));
+        this.alphaTdFastRel = Math.exp(-1.0 / (0.020 * this.fs));
+        this.alphaTdSlowAtt = Math.exp(-1.0 / (0.020 * this.fs));
+        this.alphaTdSlowRel = Math.exp(-1.0 / (0.060 * this.fs));
+        this.alphaTdSustAtt = Math.exp(-1.0 / (0.050 * this.fs));
+        this.alphaTdSustRel = Math.exp(-1.0 / (0.200 * this.fs));
         this.updateHpfCoeffs();
         this.updateMidCoeffs();
       } else if (msg.type === 'reset') {
@@ -415,19 +421,43 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
 
         if (Math.abs(this.transientAttack) > 0.005 || Math.abs(this.transientSustain) > 0.005) {
           const monoAbs = 0.5 * (Math.abs(inL) + Math.abs(inR));
-          this.tdEnvFast = this.alphaTdFast * this.tdEnvFast + (1.0 - this.alphaTdFast) * monoAbs;
-          this.tdEnvSlow = this.alphaTdSlow * this.tdEnvSlow + (1.0 - this.alphaTdSlow) * monoAbs;
-          this.tdEnvSust = this.alphaTdSust * this.tdEnvSust + (1.0 - this.alphaTdSust) * monoAbs;
+
+          if (monoAbs > this.tdEnvFast) {
+            this.tdEnvFast = this.alphaTdFastAtt * this.tdEnvFast + (1.0 - this.alphaTdFastAtt) * monoAbs;
+          } else {
+            this.tdEnvFast = this.alphaTdFastRel * this.tdEnvFast + (1.0 - this.alphaTdFastRel) * monoAbs;
+          }
+
+          if (monoAbs > this.tdEnvSlow) {
+            this.tdEnvSlow = this.alphaTdSlowAtt * this.tdEnvSlow + (1.0 - this.alphaTdSlowAtt) * monoAbs;
+          } else {
+            this.tdEnvSlow = this.alphaTdSlowRel * this.tdEnvSlow + (1.0 - this.alphaTdSlowRel) * monoAbs;
+          }
+
+          if (monoAbs > this.tdEnvSust) {
+            this.tdEnvSust = this.alphaTdSustAtt * this.tdEnvSust + (1.0 - this.alphaTdSustAtt) * monoAbs;
+          } else {
+            this.tdEnvSust = this.alphaTdSustRel * this.tdEnvSust + (1.0 - this.alphaTdSustRel) * monoAbs;
+          }
 
           const attackDiff = Math.max(0.0, this.tdEnvFast - this.tdEnvSlow);
-          const normalizedDiff = attackDiff / (this.tdEnvSlow + 1e-4);
+          const normalizedDiff = Math.min(1.0, attackDiff / (this.tdEnvFast + 1e-4));
 
-          const signA = Math.sign(this.transientAttack);
-          const shapedAttack = signA * Math.pow(Math.abs(this.transientAttack), 1.8);
-          const attackGainMod = 1.0 + (shapedAttack * normalizedDiff * 1.5);
-          const sustainGainMod = 1.0 + (this.transientSustain * (this.tdEnvSust / (this.tdEnvFast + 1e-4)) * 0.7);
+          let attackGainMod = 1.0;
+          if (this.transientAttack < 0) {
+            // Negative attack: smoothly soften the transient strike without creating an unnatural hole/flam
+            attackGainMod = 1.0 + (this.transientAttack * 0.75 * normalizedDiff);
+          } else {
+            const signA = Math.sign(this.transientAttack);
+            const shapedAttack = signA * Math.pow(Math.abs(this.transientAttack), 1.6);
+            attackGainMod = 1.0 + (shapedAttack * normalizedDiff * 1.5);
+          }
 
-          const tdGainPre = Math.max(0.05, Math.min(3.0, attackGainMod * sustainGainMod));
+          const sustainDiff = Math.max(0.0, this.tdEnvSust - this.tdEnvFast * 0.5);
+          const sustainNorm = Math.min(1.0, sustainDiff / (this.tdEnvSust + 1e-4));
+          const sustainGainMod = 1.0 + (this.transientSustain * sustainNorm * 0.8);
+
+          const tdGainPre = Math.max(0.15, Math.min(3.0, attackGainMod * sustainGainMod));
           tdPreL *= tdGainPre;
           tdPreR *= tdGainPre;
         }
@@ -515,19 +545,43 @@ class FeedForwardCompressorProcessor extends AudioWorkletProcessor {
 
         if (Math.abs(this.transientAttack) > 0.005 || Math.abs(this.transientSustain) > 0.005) {
           const monoAbs = 0.5 * (Math.abs(compL) + Math.abs(compR));
-          this.tdEnvFast = this.alphaTdFast * this.tdEnvFast + (1.0 - this.alphaTdFast) * monoAbs;
-          this.tdEnvSlow = this.alphaTdSlow * this.tdEnvSlow + (1.0 - this.alphaTdSlow) * monoAbs;
-          this.tdEnvSust = this.alphaTdSust * this.tdEnvSust + (1.0 - this.alphaTdSust) * monoAbs;
+
+          if (monoAbs > this.tdEnvFast) {
+            this.tdEnvFast = this.alphaTdFastAtt * this.tdEnvFast + (1.0 - this.alphaTdFastAtt) * monoAbs;
+          } else {
+            this.tdEnvFast = this.alphaTdFastRel * this.tdEnvFast + (1.0 - this.alphaTdFastRel) * monoAbs;
+          }
+
+          if (monoAbs > this.tdEnvSlow) {
+            this.tdEnvSlow = this.alphaTdSlowAtt * this.tdEnvSlow + (1.0 - this.alphaTdSlowAtt) * monoAbs;
+          } else {
+            this.tdEnvSlow = this.alphaTdSlowRel * this.tdEnvSlow + (1.0 - this.alphaTdSlowRel) * monoAbs;
+          }
+
+          if (monoAbs > this.tdEnvSust) {
+            this.tdEnvSust = this.alphaTdSustAtt * this.tdEnvSust + (1.0 - this.alphaTdSustAtt) * monoAbs;
+          } else {
+            this.tdEnvSust = this.alphaTdSustRel * this.tdEnvSust + (1.0 - this.alphaTdSustRel) * monoAbs;
+          }
 
           const attackDiff = Math.max(0.0, this.tdEnvFast - this.tdEnvSlow);
-          const normalizedDiff = attackDiff / (this.tdEnvSlow + 1e-4);
+          const normalizedDiff = Math.min(1.0, attackDiff / (this.tdEnvFast + 1e-4));
 
-          const signA = Math.sign(this.transientAttack);
-          const shapedAttack = signA * Math.pow(Math.abs(this.transientAttack), 1.8);
-          const attackGainMod = 1.0 + (shapedAttack * normalizedDiff * 1.5);
-          const sustainGainMod = 1.0 + (this.transientSustain * (this.tdEnvSust / (this.tdEnvFast + 1e-4)) * 0.7);
+          let attackGainMod = 1.0;
+          if (this.transientAttack < 0) {
+            // Negative attack: smoothly softens initial transient without creating an unnatural hole/flam
+            attackGainMod = 1.0 + (this.transientAttack * 0.75 * normalizedDiff);
+          } else {
+            const signA = Math.sign(this.transientAttack);
+            const shapedAttack = signA * Math.pow(Math.abs(this.transientAttack), 1.6);
+            attackGainMod = 1.0 + (shapedAttack * normalizedDiff * 1.5);
+          }
 
-          const tdGainPost = Math.max(0.05, Math.min(3.0, attackGainMod * sustainGainMod));
+          const sustainDiff = Math.max(0.0, this.tdEnvSust - this.tdEnvFast * 0.5);
+          const sustainNorm = Math.min(1.0, sustainDiff / (this.tdEnvSust + 1e-4));
+          const sustainGainMod = 1.0 + (this.transientSustain * sustainNorm * 0.8);
+
+          const tdGainPost = Math.max(0.15, Math.min(3.0, attackGainMod * sustainGainMod));
           compL *= tdGainPost;
           compR *= tdGainPost;
         }
